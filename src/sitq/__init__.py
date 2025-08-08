@@ -35,6 +35,3 @@ __all__ = [
 ]
 
 
-def _now() -> datetime:
-    """Return the current UTC time (helper for consistency)."""
-    return datetime.now(timezone.utc)

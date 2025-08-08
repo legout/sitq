@@ -1,0 +1,111 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.14.16"
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "ffd23c618b196296c49f9c4a46150984",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bPlj",
+      "code_hash": "b6af3305abfa9cb441f26bd3889f2aae",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "exlN",
+      "code_hash": "6be837c441d55dd27b68a029a3813490",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "FMhT",
+      "code_hash": "42f4a1bb4a8b7a08569f0590c9893ba1",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "/var/folders/sb/zk03k66d2sd4dvf7j7kxmv0m0000gn/T/marimo_5901/__marimo__cell_FMhT_.py:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\n  run_at=datetime.utcnow() + timedelta(minutes=2),\n"
+        }
+      ]
+    },
+    {
+      "id": "whZI",
+      "code_hash": "c291a5fc55e13866cc97405b553d9249",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "zwOv",
+      "code_hash": "0463f70a1e30e652a09f6eac6198b07e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "KQdi",
+      "code_hash": "b4a88417b3d0170d754c647c30b7216a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre style='font-size: 12px'>&#x27;Import error: Traceback (most recent call last):\\n  File &quot;/Users/z0043ddz/coding/libs/sitq/src/sitq/task_queue2.py&quot;, line 485, in run_once\\n    func = _load_callable(func_path)\\n  File &quot;/Users/z0043ddz/coding/libs/sitq/src/sitq/task_queue2.py&quot;, line 95, in _load_callable\\n    module = import_module(module_path)\\n  File &quot;/Users/z0043ddz/.local/share/uv/python/cpython-3.13.0-macos-aarch64-none/lib/python3.13/importlib/__init__.py&quot;, line 88, in import_module\\n    return _bootstrap._gcd_import(name[level:], package, level)\\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File &quot;&lt;frozen importlib._bootstrap&gt;&quot;, line 1384, in _gcd_import\\n  File &quot;&lt;frozen importlib._bootstrap&gt;&quot;, line 1298, in _sanity_check\\nValueError: Empty module name\\n&#x27;</pre>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "rSqX",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

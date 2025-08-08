@@ -1,0 +1,135 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.14.16"
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "8fa3d3e8336c872ca011c07f76ea54a4",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "84a1b05e2b8460c7968bcbe90854c857",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "1f4da0f5b65e41b68c4c5f881681150a",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "28711d2ac5d60caa7a52fdacef44551b",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "_create_tables arg type: <class 'sqlalchemy.engine.base.Connection'>\n"
+        }
+      ]
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "a8c91e15b3c629d8f3050571c69bb1bc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "91591648350cd9216ad12dbba8d2e7e8",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "Task 73605406-61aa-4d6a-8fae-cc519c7a0923 enqueued.\n"
+        }
+      ]
+    },
+    {
+      "id": "yrwU",
+      "code_hash": "f0d111dfbf2b506f436fba8ad8370edd",
+      "outputs": [
+        {
+          "type": "error",
+          "ename": "exception",
+          "evalue": "This connection has already initialized a SQLAlchemy Transaction() object via begin() or autobegin; can't call begin() here unless rollback() or commit() is called first.",
+          "traceback": []
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/.venv/lib/python3.13/site-packages/marimo/_runtime/executor.py&quot;</span>, line <span class=\"m\">117</span>, in <span class=\"n\">execute_cell_async</span>\n<span class=\"w\">    </span><span class=\"k\">return</span> <span class=\"k\">await</span> <span class=\"nb\">eval</span><span class=\"p\">(</span><span class=\"n\">cell</span><span class=\"o\">.</span><span class=\"n\">last_expr</span><span class=\"p\">,</span> <span class=\"n\">glbls</span><span class=\"p\">)</span>\n<span class=\"w\">           </span><span class=\"pm\">^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>\n  File <span class=\"nb\">&quot;/var/folders/sb/zk03k66d2sd4dvf7j7kxmv0m0000gn/T/marimo_10294/__marimo__cell_yrwU_.py&quot;</span>, line <span class=\"m\">10</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"k\">await</span> <span class=\"n\">worker</span><span class=\"o\">.</span><span class=\"n\">stop</span><span class=\"p\">()</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/src/sitq/workers/base.py&quot;</span>, line <span class=\"m\">59</span>, in <span class=\"n\">stop</span>\n<span class=\"w\">    </span><span class=\"k\">await</span> <span class=\"bp\">self</span><span class=\"o\">.</span><span class=\"n\">_worker_task</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/src/sitq/workers/base.py&quot;</span>, line <span class=\"m\">82</span>, in <span class=\"n\">_run</span>\n<span class=\"w\">    </span><span class=\"n\">claimed</span> <span class=\"o\">=</span> <span class=\"k\">await</span> <span class=\"bp\">self</span><span class=\"o\">.</span><span class=\"n\">backend</span><span class=\"o\">.</span><span class=\"n\">claim_task</span><span class=\"p\">(</span><span class=\"n\">task</span><span class=\"o\">.</span><span class=\"n\">id</span><span class=\"p\">)</span>\n<span class=\"w\">              </span><span class=\"pm\">^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/src/sitq/backends/sqlite.py&quot;</span>, line <span class=\"m\">206</span>, in <span class=\"n\">claim_task</span>\n<span class=\"w\">    </span><span class=\"k\">async</span> <span class=\"k\">with</span> <span class=\"bp\">self</span><span class=\"o\">.</span><span class=\"n\">conn</span><span class=\"o\">.</span><span class=\"n\">begin</span><span class=\"p\">():</span>\n<span class=\"w\">               </span><span class=\"pm\">~~~~~~~~~~~~~~~^^</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/.venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/base.py&quot;</span>, line <span class=\"m\">121</span>, in <span class=\"n\">__aenter__</span>\n<span class=\"w\">    </span><span class=\"k\">return</span> <span class=\"k\">await</span> <span class=\"bp\">self</span><span class=\"o\">.</span><span class=\"n\">start</span><span class=\"p\">(</span><span class=\"n\">is_ctxmanager</span><span class=\"o\">=</span><span class=\"kc\">True</span><span class=\"p\">)</span>\n<span class=\"w\">           </span><span class=\"pm\">^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/.venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/engine.py&quot;</span>, line <span class=\"m\">1409</span>, in <span class=\"n\">start</span>\n<span class=\"w\">    </span><span class=\"k\">await</span> <span class=\"n\">greenlet_spawn</span><span class=\"p\">(</span>\n<span class=\"w\">    </span><span class=\"o\">...&lt;</span><span class=\"mi\">3</span> <span class=\"n\">lines</span><span class=\"o\">&gt;...</span>\n<span class=\"w\">    </span><span class=\"p\">)</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py&quot;</span>, line <span class=\"m\">190</span>, in <span class=\"n\">greenlet_spawn</span>\n<span class=\"w\">    </span><span class=\"n\">result</span> <span class=\"o\">=</span> <span class=\"n\">context</span><span class=\"o\">.</span><span class=\"n\">switch</span><span class=\"p\">(</span><span class=\"o\">*</span><span class=\"n\">args</span><span class=\"p\">,</span> <span class=\"o\">**</span><span class=\"n\">kwargs</span><span class=\"p\">)</span>\n  File <span class=\"nb\">&quot;/Users/z0043ddz/coding/libs/sitq/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py&quot;</span>, line <span class=\"m\">859</span>, in <span class=\"n\">begin</span>\n<span class=\"w\">    </span><span class=\"k\">raise</span> <span class=\"n\">exc</span><span class=\"o\">.</span><span class=\"n\">InvalidRequestError</span><span class=\"p\">(</span>\n<span class=\"w\">    </span><span class=\"o\">...&lt;</span><span class=\"mi\">4</span> <span class=\"n\">lines</span><span class=\"o\">&gt;...</span>\n<span class=\"w\">    </span><span class=\"p\">)</span>\n<span class=\"gr\">sqlalchemy.exc.InvalidRequestError</span>: <span class=\"n\">This connection has already initialized a SQLAlchemy Transaction() object via begin() or autobegin; can&#39;t call begin() here unless rollback() or commit() is called first.</span>\n</pre></div>\n</span>"
+        }
+      ]
+    },
+    {
+      "id": "puvZ",
+      "code_hash": "19e8073802fd6409973862a36409ba85",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "okft",
+      "code_hash": "1a724b4636b1175fa25a97c544d9573f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre style='font-size: 12px'>&lt;coroutine object SQLiteBackend.close at 0x120c02440&gt;</pre>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vuen",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

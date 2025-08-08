@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+import base64
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -51,11 +52,19 @@ class RedisBackend(Backend):
     async def enqueue(self, task: Task) -> None:
         """Store payload and push to immediate list or scheduled ZSET."""
         task_key = f"{self.task_hash_prefix}:{task.id}"
+
+        # Encode binary payloads as base64 strings so text-only redis setups work.
+        def _b64_or_empty(b: Optional[bytes]) -> str:
+            if b is None or b == b"":
+                return ""
+            return base64.b64encode(b).decode("ascii")
+
         await self.redis.hmset_dict(
             task_key,
-            func=task.func,
-            args=task.args or b"",
-            kwargs=task.kwargs or b"",
+            func=_b64_or_empty(task.func),
+            args=_b64_or_empty(task.args),
+            kwargs=_b64_or_empty(task.kwargs),
+            context=_b64_or_empty(task.context),
             schedule=json.dumps(task.schedule) if task.schedule else "",
             created_at=task.created_at.isoformat(),
             next_run_time=task.next_run_time.isoformat() if task.next_run_time else "",
@@ -89,15 +98,26 @@ class RedisBackend(Backend):
         data = await self.redis.hgetall(task_key, encoding="utf-8")
         if not data:
             return None
+
+        def _decode_b64(maybe_b64: str) -> Optional[bytes]:
+            if not maybe_b64:
+                return None
+            try:
+                return base64.b64decode(maybe_b64.encode("ascii"))
+            except Exception:
+                # If it's not valid base64, fall back to returning the raw bytes
+                return maybe_b64.encode("utf-8")
+
         return Task(
             id=task_id,
-            func=data["func"].encode(),
-            args=data.get("args", "").encode(),
-            kwargs=data.get("kwargs", "").encode(),
-            schedule=json.loads(data["schedule"]) if data["schedule"] else None,
+            func=_decode_b64(data.get("func", "")),
+            args=_decode_b64(data.get("args", "")),
+            kwargs=_decode_b64(data.get("kwargs", "")),
+            context=_decode_b64(data.get("context", "")),
+            schedule=json.loads(data["schedule"]) if data.get("schedule") else None,
             created_at=datetime.fromisoformat(data["created_at"]),
             next_run_time=datetime.fromisoformat(data["next_run_time"])
-            if data["next_run_time"]
+            if data.get("next_run_time")
             else None,
             retries=int(data.get("retries", "0")),
             max_retries=int(data.get("max_retries", "3")),
@@ -111,12 +131,18 @@ class RedisBackend(Backend):
     # ------------------------------------------------------------------
     async def store_result(self, result: Result) -> None:
         result_key = f"{self.result_prefix}:{result.task_id}"
+
+        def _b64_or_empty(b: Optional[bytes]) -> str:
+            if b is None or b == b"":
+                return ""
+            return base64.b64encode(b).decode("ascii")
+
         await self.redis.hmset_dict(
             result_key,
             id=result.id,
             task_id=result.task_id,
             status=result.status,
-            value=result.value or b"",
+            value=_b64_or_empty(result.value),
             traceback=result.traceback or "",
             retry_count=str(result.retry_count),
             last_retry_at=result.last_retry_at.isoformat()
@@ -129,12 +155,21 @@ class RedisBackend(Backend):
         data = await self.redis.hgetall(result_key, encoding="utf-8")
         if not data:
             return None
+
+        def _decode_b64(maybe_b64: str) -> Optional[bytes]:
+            if not maybe_b64:
+                return None
+            try:
+                return base64.b64decode(maybe_b64.encode("ascii"))
+            except Exception:
+                return maybe_b64.encode("utf-8")
+
         return Result(
             id=data["id"],
             task_id=data["task_id"],
             status=data["status"],
-            value=data["value"] if data["value"] else None,
-            traceback=data["traceback"] if data["traceback"] else None,
+            value=_decode_b64(data.get("value", "")),
+            traceback=data["traceback"] if data.get("traceback") else None,
             retry_count=int(data.get("retry_count", "0")),
             last_retry_at=datetime.fromisoformat(data["last_retry_at"])
             if data.get("last_retry_at")

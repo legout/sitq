@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -14,6 +15,8 @@ class Task:
     func: bytes = b""  # Serialized callable
     args: Optional[bytes] = None  # Serialized positional arguments
     kwargs: Optional[bytes] = None  # Serialized keyword arguments
+    # Serialized context (cloudpickle bytes) capturing contextvars.Context at enqueue time
+    context: Optional[bytes] = None
     schedule: Optional[Dict[str, Any]] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     next_run_time: Optional[datetime] = None
@@ -39,3 +42,7 @@ class Result:
     traceback: Optional[str] = None
     retry_count: int = 0
     last_retry_at: Optional[datetime] = None
+
+def _now() -> datetime:
+    """Return the current UTC time (helper for consistency)."""
+    return datetime.now(timezone.utc)

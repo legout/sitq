@@ -9,6 +9,8 @@ import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 import uuid
+import contextvars
+import cloudpickle
 
 from .core import Task, Result, _now
 from .backends.base import Backend
@@ -55,13 +57,37 @@ class TaskQueue:
         **kwargs,
     ) -> str:
         """
-        Serialize ``func`` and its arguments, build a ``Task`` and persist it.
+        Serialize ``func`` and its arguments into the canonical envelope and
+        persist a ``Task``.
+
+        Canonical envelope shape:
+            {
+                "func": <callable or import-path-string>,
+                "args": <positional args tuple/list>,
+                "kwargs": <keyword args dict>
+            }
+
+        Note: the envelope is stored in ``Task.func`` as a single serialized blob.
+        This keeps backends simpler (they store a single payload) and ensures a
+        consistent contract across transports.
         """
+        envelope = {"func": func, "args": args or (), "kwargs": kwargs or {}}
+
+        # Capture current execution context (contextvars) at enqueue time and
+        # serialize it with cloudpickle. We store it on the Task so backends can
+        # persist and workers can restore it before execution.
+        try:
+            ctx = contextvars.copy_context()
+            ctx_bytes = cloudpickle.dumps(ctx)
+        except Exception:
+            ctx_bytes = None
+
         task = Task(
             id=str(uuid.uuid4()),
-            func=self.serializer.dumps(func),
-            args=self.serializer.dumps(args) if args else None,
-            kwargs=self.serializer.dumps(kwargs) if kwargs else None,
+            func=self.serializer.dumps(envelope),
+            args=None,
+            kwargs=None,
+            context=ctx_bytes,
             schedule=schedule,
             max_retries=max_retries,
             retry_backoff=retry_backoff,

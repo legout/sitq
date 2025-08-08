@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import base64
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -69,11 +70,19 @@ class NatsBackend(Backend):
         reference message on either the immediate or scheduled subject.
         """
         kv = await self.js.key_value(bucket="tasks")
+
+        def _b64_or_none(b: Optional[bytes]) -> Optional[str]:
+            if b is None or b == b"":
+                return None
+            return base64.b64encode(b).decode("ascii")
+
         payload = {
             "id": task.id,
-            "func": task.func.decode(),
-            "args": task.args.decode() if task.args else None,
-            "kwargs": task.kwargs.decode() if task.kwargs else None,
+            # Store binary-safe base64 strings for func/args/kwargs/context
+            "func": _b64_or_none(task.func),
+            "args": _b64_or_none(task.args),
+            "kwargs": _b64_or_none(task.kwargs),
+            "context": _b64_or_none(task.context),
             "schedule": task.schedule,
             "created_at": task.created_at.isoformat(),
             "next_run_time": task.next_run_time.isoformat()
@@ -105,18 +114,29 @@ class NatsBackend(Backend):
         )
         msgs = await sub.fetch(limit, timeout=1_000_000_000)  # 1 s
         tasks: List[Task] = []
+
+        def _maybe_b64_decode(s: Optional[str]) -> Optional[bytes]:
+            if s is None:
+                return None
+            try:
+                return base64.b64decode(s.encode("ascii"))
+            except Exception:
+                # Fallback: return raw utf-8 bytes
+                return s.encode("utf-8")
+
         for msg in msgs:
             data = json.loads(msg.data.decode())
             tasks.append(
                 Task(
                     id=data["id"],
-                    func=data["func"].encode(),
-                    args=data["args"].encode() if data["args"] else None,
-                    kwargs=data["kwargs"].encode() if data["kwargs"] else None,
-                    schedule=data["schedule"],
+                    func=_maybe_b64_decode(data.get("func")),
+                    args=_maybe_b64_decode(data.get("args")),
+                    kwargs=_maybe_b64_decode(data.get("kwargs")),
+                    context=_maybe_b64_decode(data.get("context")),
+                    schedule=data.get("schedule"),
                     created_at=datetime.fromisoformat(data["created_at"]),
                     next_run_time=datetime.fromisoformat(data["next_run_time"])
-                    if data["next_run_time"]
+                    if data.get("next_run_time")
                     else None,
                     retries=data.get("retries", 0),
                     max_retries=data.get("max_retries", 3),
@@ -130,18 +150,32 @@ class NatsBackend(Backend):
         kv = await self.js.key_value(bucket="tasks")
         entry = await kv.get(task_id)
         data = json.loads(entry.value.decode())
-        data.update(kwargs)
+
+        # If kwargs contains bytes (e.g., result_id as bytes), ensure they are str
+        def _maybe_b64_bytes(v):
+            if isinstance(v, (bytes, bytearray)):
+                return base64.b64encode(bytes(v)).decode("ascii")
+            return v
+
+        for k, v in kwargs.items():
+            data[k] = _maybe_b64_bytes(v)
+
         await kv.put(task_id, json.dumps(data).encode())
 
     # ------------------------------------------------------------------
     async def store_result(self, result: Result) -> None:
+        def _b64_or_none(b: Optional[bytes]) -> Optional[str]:
+            if b is None or b == b"":
+                return None
+            return base64.b64encode(b).decode("ascii")
+
         await self.js.publish(
             self.result_subject,
             json.dumps(
                 {
                     "task_id": result.task_id,
                     "status": result.status,
-                    "value": result.value.decode() if result.value else None,
+                    "value": _b64_or_none(result.value),
                     "traceback": result.traceback,
                     "retry_count": result.retry_count,
                     "last_retry_at": result.last_retry_at.isoformat()
@@ -170,12 +204,21 @@ class NatsBackend(Backend):
                 payload = json.loads(msg.data.decode())
                 if payload["task_id"] == task_id:
                     await msg.ack()
+
+                    def _maybe_b64_decode(s: Optional[str]) -> Optional[bytes]:
+                        if s is None:
+                            return None
+                        try:
+                            return base64.b64decode(s.encode("ascii"))
+                        except Exception:
+                            return s.encode("utf-8")
+
                     return Result(
                         id=str(uuid.uuid4()),
                         task_id=task_id,
                         status=payload["status"],
-                        value=payload["value"].encode() if payload["value"] else None,
-                        traceback=payload["traceback"],
+                        value=_maybe_b64_decode(payload.get("value")),
+                        traceback=payload.get("traceback"),
                         retry_count=int(payload.get("retry_count", 0)),
                         last_retry_at=datetime.fromisoformat(payload["last_retry_at"])
                         if payload.get("last_retry_at")
