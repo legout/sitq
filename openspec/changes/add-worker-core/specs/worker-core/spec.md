@@ -53,7 +53,7 @@ The worker SHALL support graceful shutdown that stops polling and waits for runn
 - **AND** SHALL wait for all in-flight tasks to finish before returning
 
 ### Requirement: Basic worker logging
-The worker SHALL emit basic logging events for lifecycle and task outcomes using the standard logging library.
+The worker SHALL emit basic logging events for lifecycle and task outcomes using the loguru library.
 
 #### Scenario: Log task lifecycle events
 - **WHEN** a task is reserved, started, completed, or failed

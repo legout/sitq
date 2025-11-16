@@ -3,19 +3,15 @@ Async Worker implementation for executing tasks from the backend.
 """
 
 import asyncio
-import logging
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import Any, Optional, Dict, Set
-import traceback
-
-# Import standard library modules first to avoid conflicts
-import queue
+from typing import Any, Optional, Set
+from loguru import logger
 
 # Import our modules directly from relative paths to avoid queue.py conflict
 from .backends.base import Backend, ReservedTask
 from .serialization import Serializer, CloudpickleSerializer
-from .result import Result
 
 
 class Worker:
@@ -31,7 +27,7 @@ class Worker:
                    Defaults to CloudpickleSerializer.
         concurrency: Maximum number of concurrent tasks. Defaults to 1.
         poll_interval: Time between polls when no tasks are available. Defaults to 1.0 seconds.
-        logger: Logger instance. If None, uses 'sitq.worker' logger.
+        custom_logger: Logger instance. If None, uses loguru's default logger.
     """
 
     def __init__(
@@ -40,13 +36,13 @@ class Worker:
         serializer: Optional[Serializer] = None,
         concurrency: int = 1,
         poll_interval: float = 1.0,
-        logger: Optional[logging.Logger] = None,
+        custom_logger: Optional[Any] = None,
     ):
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
         self.concurrency = concurrency
         self.poll_interval = poll_interval
-        self.logger = logger or logging.getLogger("sitq.worker")
+        self.logger = custom_logger or logger
 
         self._running = False
         self._task = None
