@@ -136,16 +136,19 @@ class Worker:
         logger.info("Starting execution of task %s", task_id)
 
         try:
-            # Deserialize the function
-            func = self.serializer.loads(reserved_task.func)
+            # Deserialize the task envelope
+            envelope = self.serializer.loads(reserved_task.func)
+            func = envelope["func"]
+            args = envelope.get("args", [])
+            kwargs = envelope.get("kwargs", {})
 
             # Execute the function (async or sync)
             if asyncio.iscoroutinefunction(func):
-                result = await func()
+                result = await func(*args, **kwargs)
             else:
                 # Run sync function in thread pool
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, func)
+                result = await loop.run_in_executor(None, func, *args, **kwargs)
 
             # Serialize and record success
             serialized_result = self.serializer.dumps(result)
