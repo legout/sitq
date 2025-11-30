@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import traceback
 from datetime import datetime, timezone
 from typing import Optional
 
+from loguru import logger
+
 from .backends.base import Backend
 from .core import ReservedTask
 from .serialization import Serializer, CloudpickleSerializer
-
-
-logger = logging.getLogger(__name__)
 
 
 class Worker:
