@@ -49,24 +49,36 @@ class SQLiteBackend(Backend):
             self._create_tables()
         return self._conn
 
+    async def connect(self) -> None:
+        """Establish database connection and prepare for operations."""
+        await self._get_connection()
+
+    async def close(self) -> None:
+        """Close database connection."""
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
     def _create_tables(self) -> None:
         """Create the tasks table if it doesn't exist."""
         conn = self._conn
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                task_id TEXT PRIMARY KEY,
-                payload BLOB NOT NULL,
-                status TEXT NOT NULL CHECK (status IN ('pending', 'in_progress', 'success', 'failed')),
-                available_at TIMESTAMP NOT NULL,
-                started_at TIMESTAMP,
-                finished_at TIMESTAMP,
-                result_value BLOB,
-                error_message TEXT,
-                traceback TEXT,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
+        if conn is not None:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    task_id TEXT PRIMARY KEY,
+                    payload BLOB NOT NULL,
+                    status TEXT NOT NULL CHECK (status IN ('pending', 'in_progress', 'success', 'failed')),
+                    available_at TIMESTAMP NOT NULL,
+                    enqueued_at TIMESTAMP,
+                    started_at TIMESTAMP,
+                    finished_at TIMESTAMP,
+                    result_value BLOB,
+                    error_message TEXT,
+                    traceback TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
 
     async def enqueue(
         self, task_id: str, payload: bytes, available_at: datetime
@@ -76,13 +88,14 @@ class SQLiteBackend(Backend):
 
         # Convert datetime to ISO format for SQLite
         available_at_str = available_at.replace(tzinfo=timezone.utc).isoformat()
+        enqueued_at_str = datetime.now(timezone.utc).isoformat()
 
         conn.execute(
             """
-            INSERT INTO tasks (task_id, payload, status, available_at)
-            VALUES (?, ?, 'pending', ?)
+            INSERT INTO tasks (task_id, payload, status, available_at, enqueued_at)
+            VALUES (?, ?, 'pending', ?, ?)
         """,
-            (task_id, payload, available_at_str),
+            (task_id, payload, available_at_str, enqueued_at_str),
         )
         conn.commit()
 
@@ -175,7 +188,7 @@ class SQLiteBackend(Backend):
 
         cursor = conn.execute(
             """
-            SELECT task_id, status, result_value, error_message, traceback, finished_at
+            SELECT task_id, status, result_value, error_message, traceback, enqueued_at, finished_at
             FROM tasks 
             WHERE task_id = ? AND status IN ('success', 'failed')
         """,
@@ -192,11 +205,6 @@ class SQLiteBackend(Backend):
             value=row[2],
             error=row[3],
             traceback=row[4],
-            finished_at=datetime.fromisoformat(row[5]) if row[5] else None,
+            enqueued_at=datetime.fromisoformat(row[5]) if row[5] else None,
+            finished_at=datetime.fromisoformat(row[6]) if row[6] else None,
         )
-
-    async def close(self) -> None:
-        """Close database connection."""
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None

@@ -22,12 +22,32 @@ class TaskQueue:
                    Defaults to CloudpickleSerializer.
     """
 
-    def __init__(self, backend: Backend, serializer: Optional[Serializer] = None):
+    def __init__(
+        self,
+        backend: Optional[Backend] = None,
+        serializer: Optional[Serializer] = None,
+        default_result_timeout: Optional[float] = None,
+    ):
+        # Provide defaults if not specified
+        if backend is None:
+            from .backends.sqlite import SQLiteBackend
+
+            backend = SQLiteBackend(":memory:")  # Default in-memory SQLite
+
+        if serializer is None:
+            serializer = CloudpickleSerializer()
+
         self.backend = backend
-        self.serializer = serializer or CloudpickleSerializer()
+        self.serializer = serializer
+        self.default_result_timeout = default_result_timeout
 
     async def enqueue(
-        self, func: Any, *args: Any, eta: Optional[datetime] = None, **kwargs: Any
+        self,
+        func: Any,
+        *args: Any,
+        eta: Optional[datetime] = None,
+        context: Optional[dict] = None,
+        **kwargs: Any,
     ) -> str:
         """
         Enqueue a task for execution.
@@ -46,6 +66,8 @@ class TaskQueue:
 
         # Create task payload
         payload = {"func": func, "args": args, "kwargs": kwargs}
+        if context is not None:
+            payload["context"] = context
 
         # Serialize payload
         serialized_payload = self.serializer.dumps(payload)
@@ -95,8 +117,13 @@ class TaskQueue:
                 value=value,
                 error=backend_result.error,
                 traceback=backend_result.traceback,
+                enqueued_at=backend_result.enqueued_at,
                 finished_at=backend_result.finished_at,
             )
+
+        # Use default_result_timeout if no explicit timeout provided
+        if timeout is None:
+            timeout = self.default_result_timeout
 
         if timeout is None:
             return await _get_result()
@@ -111,3 +138,12 @@ class TaskQueue:
         Close the task queue and cleanup resources.
         """
         await self.backend.close()
+
+    async def __aenter__(self) -> "TaskQueue":
+        """Async context manager entry."""
+        await self.backend.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.close()

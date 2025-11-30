@@ -12,21 +12,24 @@ class ReservedTask:
     """
     Data model for tasks that have been reserved by a worker for execution.
     """
+
     task_id: str
     payload: bytes
     started_at: datetime
 
 
-@dataclass 
+@dataclass
 class Result:
     """
     Data model for completed task results.
     """
+
     task_id: str
     status: str  # 'success' or 'failure'
     value: Optional[Any] = None
     error: Optional[str] = None
     traceback: Optional[str] = None
+    enqueued_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 
 
@@ -42,10 +45,7 @@ class Backend(Protocol):
     """
 
     async def enqueue(
-        self,
-        task_id: str,
-        payload: bytes,
-        available_at: datetime
+        self, task_id: str, payload: bytes, available_at: datetime
     ) -> None:
         """
         Persist a new task with pending status.
@@ -57,11 +57,7 @@ class Backend(Protocol):
         """
         ...
 
-    async def reserve(
-        self,
-        max_items: int,
-        now: datetime
-    ) -> List[ReservedTask]:
+    async def reserve(self, max_items: int, now: datetime) -> List[ReservedTask]:
         """
         Atomically reserve tasks for execution by workers.
 
@@ -75,10 +71,7 @@ class Backend(Protocol):
         ...
 
     async def mark_success(
-        self,
-        task_id: str,
-        value: Any,
-        finished_at: datetime
+        self, task_id: str, value: Any, finished_at: datetime
     ) -> None:
         """
         Mark a task as successfully completed.
@@ -91,11 +84,7 @@ class Backend(Protocol):
         ...
 
     async def mark_failure(
-        self,
-        task_id: str,
-        error: str,
-        traceback: Optional[str],
-        finished_at: datetime
+        self, task_id: str, error: str, traceback: Optional[str], finished_at: datetime
     ) -> None:
         """
         Mark a task as failed.
@@ -117,6 +106,12 @@ class Backend(Protocol):
 
         Returns:
             Result object if task completed, None otherwise
+        """
+        ...
+
+    async def connect(self) -> None:
+        """
+        Establish backend connections and prepare for operations.
         """
         ...
 

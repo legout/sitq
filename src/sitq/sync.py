@@ -40,9 +40,15 @@ class SyncTaskQueue:
             result = queue.get_result(task_id)
     """
 
-    def __init__(self, backend: Backend, serializer: Optional[Serializer] = None):
+    def __init__(
+        self,
+        backend: Backend,
+        serializer: Optional[Serializer] = None,
+        default_result_timeout: Optional[float] = None,
+    ):
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
+        self.default_result_timeout = default_result_timeout
         self._task_queue: Optional[TaskQueue] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
@@ -54,7 +60,9 @@ class SyncTaskQueue:
             SyncTaskQueue: self for use with 'as' clause
         """
         self._ensure_loop()
-        self._task_queue = TaskQueue(self.backend, self.serializer)
+        self._task_queue = TaskQueue(
+            self.backend, self.serializer, self.default_result_timeout
+        )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
