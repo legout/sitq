@@ -45,6 +45,16 @@ class Task:
     locked_until: Optional[datetime] = None
 
 
+@dataclass
+class ReservedTask:
+    """A task that has been reserved for execution by a worker."""
+
+    task_id: str
+    func: bytes  # Serialized callable envelope
+    context: Optional[bytes]  # Serialized contextvars.Context
+    started_at: datetime
+
+
 def _now() -> datetime:
     """Return the current UTC time (helper for consistency)."""
     return datetime.now(timezone.utc)
