@@ -8,14 +8,80 @@ from src.sitq.serialization import CloudpickleSerializer, Serializer
 
 def test_taskqueue_default_serializer():
     """Test that TaskQueue uses CloudpickleSerializer by default."""
-    queue = TaskQueue()
+    from src.sitq.backends.base import Backend
+
+    class MockBackend(Backend):
+        async def connect(self):
+            pass
+
+        async def close(self):
+            pass
+
+        async def enqueue(self, task):
+            pass
+
+        async def fetch_due_tasks(self, limit=1):
+            return []
+
+        async def update_task_state(self, task_id, **kwargs):
+            pass
+
+        async def store_result(self, result):
+            pass
+
+        async def get_result(self, task_id):
+            return None
+
+        async def claim_task(self, task_id, lock_timeout=30):
+            return True
+
+        async def release_task(self, task_id):
+            pass
+
+        async def schedule_retry(self, task_id, delay):
+            pass
+
+    queue = TaskQueue(backend=MockBackend())
     assert isinstance(queue.serializer, CloudpickleSerializer)
 
 
 def test_taskqueue_custom_serializer():
     """Test that TaskQueue accepts custom serializer."""
+    from src.sitq.backends.base import Backend
+
+    class MockBackend(Backend):
+        async def connect(self):
+            pass
+
+        async def close(self):
+            pass
+
+        async def enqueue(self, task):
+            pass
+
+        async def fetch_due_tasks(self, limit=1):
+            return []
+
+        async def update_task_state(self, task_id, **kwargs):
+            pass
+
+        async def store_result(self, result):
+            pass
+
+        async def get_result(self, task_id):
+            return None
+
+        async def claim_task(self, task_id, lock_timeout=30):
+            return True
+
+        async def release_task(self, task_id):
+            pass
+
+        async def schedule_retry(self, task_id, delay):
+            pass
+
     custom_serializer = CloudpickleSerializer()
-    queue = TaskQueue(serializer=custom_serializer)
+    queue = TaskQueue(backend=MockBackend(), serializer=custom_serializer)
     assert queue.serializer is custom_serializer
 
 
@@ -34,7 +100,40 @@ def test_worker_custom_serializer():
 
 def test_taskqueue_serializer_round_trip():
     """Test that TaskQueue can properly serialize and deserialize task payloads."""
-    queue = TaskQueue()
+    from src.sitq.backends.base import Backend
+
+    class MockBackend(Backend):
+        async def connect(self):
+            pass
+
+        async def close(self):
+            pass
+
+        async def enqueue(self, task):
+            pass
+
+        async def fetch_due_tasks(self, limit=1):
+            return []
+
+        async def update_task_state(self, task_id, **kwargs):
+            pass
+
+        async def store_result(self, result):
+            pass
+
+        async def get_result(self, task_id):
+            return None
+
+        async def claim_task(self, task_id, lock_timeout=30):
+            return True
+
+        async def release_task(self, task_id):
+            pass
+
+        async def schedule_retry(self, task_id, delay):
+            pass
+
+    queue = TaskQueue(backend=MockBackend())
 
     def example_func(name, count=1):
         return f"Hello {name}! Count: {count}"
