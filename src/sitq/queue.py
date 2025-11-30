@@ -7,15 +7,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-# Import from sibling modules
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(__file__))
-
-from serialization import Serializer, CloudpickleSerializer
-from backends.base import Backend
-from result import Result
+from .serialization import Serializer, CloudpickleSerializer
+from .backends.base import Backend
+from .result import Result
 
 
 class TaskQueue:

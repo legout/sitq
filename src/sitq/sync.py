@@ -10,15 +10,10 @@ import asyncio
 from datetime import datetime
 from typing import Any, Optional
 
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(__file__))
-
-from backends.base import Backend
-from serialization import Serializer, CloudpickleSerializer
-from queue import TaskQueue
-from result import Result
+from .backends.base import Backend
+from .serialization import Serializer, CloudpickleSerializer
+from .queue import TaskQueue
+from .result import Result
 
 
 class SyncTaskQueue:

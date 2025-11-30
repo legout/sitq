@@ -38,7 +38,9 @@ This example demonstrates the basic workflow: define a task, enqueue it, and run
 **`main.py`**
 ```python
 import asyncio
-from sitq import TaskQueue, AsyncWorker, SQLiteBackend, PickleSerializer
+from sitq import TaskQueue, Worker, Result
+from sitq.backends.sqlite import SQLiteBackend
+from sitq.serialization import CloudpickleSerializer
 
 # 1. Define your async task function
 async def say_hello(name: str):
@@ -47,44 +49,32 @@ async def say_hello(name: str):
 
 async def main():
     # 2. Set up the queue with a backend and serializer
-    queue = TaskQueue(
-        backend=SQLiteBackend(db_path="example_queue.db"),
-        serializer=PickleSerializer()
-    )
+    backend = SQLiteBackend("example_queue.db")
+    serializer = CloudpickleSerializer()
+    queue = TaskQueue(backend, serializer)
 
-    # 3. Connect to the backend
-    await queue.backend.connect()
-
-    # 4. Enqueue a task and get its ID
+    # 3. Enqueue a task and get its ID
     task_id = await queue.enqueue(say_hello, "World")
     print(f"Task {task_id} enqueued.")
 
-    # 5. Start a worker to process the task
-    worker = AsyncWorker(
-        backend=queue.backend,
-        serializer=PickleSerializer(),
-        concurrency=5
-    )
+    # 4. Start a worker to process the task
+    worker = Worker(backend, serializer, concurrency=5)
 
     # Run the worker for a short period to process the task
     await worker.start()
     await asyncio.sleep(1) # Allow time for the task to be processed
     await worker.stop()
 
-    # 6. Retrieve the result
+    # 5. Retrieve the result
     result = await queue.get_result(task_id, timeout=5)
-    if result:
+    if result and result.is_success():
         print(f"Result received: {result.status}")
-        if result.status == "success":
-            # The result value is serialized, so we need to load it
-            value = queue.serializer.loads(result.value)
-            print(f"Task return value: {value}")
+        print(f"Task return value: {result.value}")
     else:
         print("Did not receive result in time.")
 
-
-    # 7. Clean up
-    await queue.backend.close()
+    # 6. Clean up
+    await queue.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -108,16 +98,18 @@ To use a different backend, simply swap the `backend` instance.
 
 ```python
 import asyncio
-from sitq import TaskQueue, RedisBackend, PickleSerializer
+from sitq import TaskQueue, Worker
+from sitq.backends.sqlite import SQLiteBackend
+from sitq.serialization import CloudpickleSerializer
 
 # ... (define your task functions)
 
 async def main():
-    # Use RedisBackend instead of SQLiteBackend
-    queue = TaskQueue(
-        backend=RedisBackend(host="localhost", port=6379),
-        serializer=PickleSerializer()
-    )
+    # Use SQLiteBackend (RedisBackend would be imported similarly when available)
+    backend = SQLiteBackend("tasks.db")
+    serializer = CloudpickleSerializer()
+    queue = TaskQueue(backend, serializer)
+    
     # ... rest of the logic is the same
 ```
 
@@ -129,7 +121,9 @@ If you have a synchronous, CPU-intensive task, use the `ProcessWorker`.
 ```python
 import asyncio
 import time
-from sitq import TaskQueue, ProcessWorker, SQLiteBackend, PickleSerializer
+from sitq import TaskQueue, Worker, Result
+from sitq.backends.sqlite import SQLiteBackend
+from sitq.serialization import CloudpickleSerializer
 
 # A CPU-bound function
 def compute_fibonacci(n):
@@ -139,17 +133,15 @@ def compute_fibonacci(n):
         return compute_fibonacci(n-1) + compute_fibonacci(n-2)
 
 async def main():
-    queue = TaskQueue(
-        backend=SQLiteBackend("cpu_tasks.db"),
-        serializer=PickleSerializer()
-    )
-    await queue.backend.connect()
+    backend = SQLiteBackend("cpu_tasks.db")
+    serializer = CloudpickleSerializer()
+    queue = TaskQueue(backend, serializer)
 
-    # Use ProcessWorker to run the sync function in a separate process
-    worker = ProcessWorker(
-        backend=queue.backend,
-        serializer=PickleSerializer(),
-        concurrency=2 # Run up to 2 CPU-bound tasks in parallel
+    # Use Worker with high concurrency for CPU-bound tasks
+    worker = Worker(
+        backend=backend,
+        serializer=serializer,
+        concurrency=2  # Run up to 2 CPU-bound tasks in parallel
     )
 
     await worker.start()
@@ -158,15 +150,13 @@ async def main():
     task_id = await queue.enqueue(compute_fibonacci, 35)
 
     result = await queue.get_result(task_id, timeout=20)
-    if result and result.status == 'success':
-        value = queue.serializer.loads(result.value)
-        print(f"Fibonacci result: {value}")
+    if result and result.is_success():
+        print(f"Fibonacci result: {result.value}")
     else:
         print(f"Task failed or timed out. Status: {result.status if result else 'timeout'}")
 
-
     await worker.stop()
-    await queue.backend.close()
+    await queue.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -178,7 +168,9 @@ For non-`async` applications, you can use the `SyncTaskQueue` wrapper.
 
 **`sync_example.py`**
 ```python
-from sitq import SyncTaskQueue, SQLiteBackend, PickleSerializer
+from sitq import SyncTaskQueue, Result
+from sitq.backends.sqlite import SQLiteBackend
+from sitq.serialization import CloudpickleSerializer
 
 def add(x, y):
     return x + y
@@ -186,7 +178,7 @@ def add(x, y):
 # The SyncTaskQueue manages the event loop internally
 with SyncTaskQueue(
     backend=SQLiteBackend("sync_queue.db"),
-    serializer=PickleSerializer()
+    serializer=CloudpickleSerializer()
 ) as queue:
     task_id = queue.enqueue(add, 5, 10)
     print(f"Task {task_id} enqueued.")
