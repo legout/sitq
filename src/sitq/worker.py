@@ -34,20 +34,22 @@ class Worker:
         self,
         backend: Backend,
         serializer: Optional[Serializer] = None,
-        concurrency: int = 1,
+        max_concurrency: int = 1,
         poll_interval: float = 1.0,
+        batch_size: int = 1,
         custom_logger: Optional[Any] = None,
     ):
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
-        self.concurrency = concurrency
+        self.max_concurrency = max_concurrency
         self.poll_interval = poll_interval
+        self.batch_size = batch_size
         self.logger = custom_logger or logger
 
         self._running = False
         self._task = None
-        self._semaphore = asyncio.Semaphore(concurrency)
-        self._executor = ThreadPoolExecutor(max_workers=concurrency)
+        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._executor = ThreadPoolExecutor(max_workers=max_concurrency)
         self._running_tasks: Set[asyncio.Task] = set()
         self._shutdown_event = asyncio.Event()
 
@@ -63,7 +65,7 @@ class Worker:
         self._shutdown_event.clear()
         self._task = asyncio.create_task(self._run())
         self.logger.info(
-            f"Worker started with concurrency={self.concurrency}, poll_interval={self.poll_interval}s"
+            f"Worker started with max_concurrency={self.max_concurrency}, poll_interval={self.poll_interval}s, batch_size={self.batch_size}"
         )
 
     async def stop(self) -> None:
@@ -131,10 +133,20 @@ class Worker:
 
         try:
             while self._running:
+                # Calculate how many tasks we can reserve:
+                # - Limited by batch_size (don't reserve too many at once)
+                # - Limited by max_concurrency minus currently running tasks
+                running_count = len(self._running_tasks)
+                available_slots = max(0, self.max_concurrency - running_count)
+                max_to_reserve = min(self.batch_size, available_slots)
+
                 # Try to reserve and execute tasks
-                reserved_tasks = await self.backend.reserve(
-                    max_items=self.concurrency, now=datetime.now(timezone.utc)
-                )
+                if max_to_reserve > 0:
+                    reserved_tasks = await self.backend.reserve(
+                        max_items=max_to_reserve, now=datetime.now(timezone.utc)
+                    )
+                else:
+                    reserved_tasks = []
 
                 if reserved_tasks:
                     self.logger.debug(f"Reserved {len(reserved_tasks)} tasks")

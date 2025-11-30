@@ -59,7 +59,7 @@ async def test_public_api_basic_flow():
         assert async_task_id != sync_task_id
 
         # Start Worker using public API
-        worker = Worker(backend, serializer, concurrency=2)
+        worker = Worker(backend, serializer, max_concurrency=2)
         await worker.start()
 
         # Wait for tasks to be processed
