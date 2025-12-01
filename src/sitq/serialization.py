@@ -10,6 +10,9 @@ from __future__ import annotations
 import cloudpickle
 from typing import Protocol, runtime_checkable, TypedDict, Dict, Any, Optional, cast
 
+from .exceptions import SerializationError, ValidationError
+from .validation import validate
+
 
 class TaskEnvelope(TypedDict):
     """Standard task envelope format for sitq.
@@ -71,7 +74,20 @@ class CloudpickleSerializer:
         Returns:
             Serialized bytes representation of the object.
         """
-        return cloudpickle.dumps(obj)
+        # Validate input
+        if obj is None:
+            raise ValidationError(
+                "Object to serialize cannot be None - provide a valid object to serialize",
+                parameter="obj",
+            )
+
+        try:
+            return cloudpickle.dumps(obj)
+        except Exception as e:
+            raise SerializationError(
+                f"Failed to serialize object: {e} - ensure object is serializable and compatible with cloudpickle",
+                cause=e,
+            ) from e
 
     def loads(self, data: bytes) -> object:
         """Deserialize bytes back to a Python object using cloudpickle.
@@ -82,7 +98,16 @@ class CloudpickleSerializer:
         Returns:
             The original Python object.
         """
-        return cloudpickle.loads(data)
+        # Validate input
+        validate(data, "data").is_required()
+
+        try:
+            return cloudpickle.loads(data)
+        except Exception as e:
+            raise SerializationError(
+                f"Failed to deserialize data: {e} - ensure data was serialized with the same format",
+                cause=e,
+            ) from e
 
     def serialize_task_envelope(
         self, func: Any, args: tuple = (), kwargs: Optional[Dict[str, Any]] = None
@@ -116,18 +141,26 @@ class CloudpickleSerializer:
 
         # Validate envelope structure
         if not isinstance(envelope, dict):
-            raise ValueError("Task envelope must be a dictionary")
+            raise ValueError(
+                "Task envelope must be a dictionary - ensure envelope is properly structured"
+            )
 
         required_keys = {"func", "args", "kwargs"}
         missing_keys = required_keys - set(envelope.keys())
         if missing_keys:
-            raise ValueError(f"Task envelope missing required keys: {missing_keys}")
+            raise ValueError(
+                f"Task envelope missing required keys: {missing_keys} - ensure envelope contains 'func', 'args', and 'kwargs'"
+            )
 
         if not isinstance(envelope["args"], tuple):
-            raise ValueError("Task envelope 'args' must be a tuple")
+            raise ValueError(
+                "Task envelope 'args' must be a tuple - ensure function arguments are properly formatted"
+            )
 
         if not isinstance(envelope["kwargs"], dict):
-            raise ValueError("Task envelope 'kwargs' must be a dictionary")
+            raise ValueError(
+                "Task envelope 'kwargs' must be a dictionary - ensure keyword arguments are properly formatted"
+            )
 
         return cast(TaskEnvelope, envelope)
 

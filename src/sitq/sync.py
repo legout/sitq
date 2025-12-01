@@ -10,6 +10,18 @@ from typing import Optional
 from .queue import TaskQueue
 from .serialization import Serializer, CloudpickleSerializer
 from .backends.base import Backend
+from .exceptions import (
+    SyncTaskQueueError,
+    ValidationError,
+    SerializationError,
+    TaskExecutionError,
+)
+from .validation import (
+    validate,
+    validate_callable,
+    validate_non_empty_string,
+    validate_non_negative_number,
+)
 
 
 class SyncTaskQueue:
@@ -42,7 +54,16 @@ class SyncTaskQueue:
         Args:
             backend: Backend instance for persistence.
             serializer: Optional serializer instance. Defaults to CloudpickleSerializer.
+
+        Raises:
+            ValidationError: If backend is None or invalid.
         """
+        # Input validation
+        validate(backend, "backend").is_required().validate()
+
+        if serializer is not None:
+            validate(serializer, "serializer").is_callable().validate()
+
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -53,7 +74,9 @@ class SyncTaskQueue:
     def __enter__(self) -> "SyncTaskQueue":
         """Enter context manager and start event loop."""
         if self._started:
-            raise RuntimeError("SyncTaskQueue is already running")
+            raise RuntimeError(
+                "SyncTaskQueue is already running - stop the current instance before creating a new one"
+            )
 
         # Check if we're already in an event loop
         try:
@@ -133,11 +156,10 @@ class SyncTaskQueue:
             raise RuntimeError("SyncTaskQueue is not running. Use as context manager.")
 
         # Input validation
-        if not callable(func):
-            raise ValueError("func must be callable")
+        validate(func, "func").is_required().is_callable().validate()
 
-        if eta is not None and eta.tzinfo is None:
-            raise ValueError("eta must be timezone-aware datetime")
+        if eta is not None:
+            validate(eta, "eta").is_timezone_aware().validate()
 
         # Run the async enqueue in the event loop thread
         try:
@@ -146,7 +168,9 @@ class SyncTaskQueue:
             )
             return future.result()
         except Exception as e:
-            raise RuntimeError(f"Failed to enqueue task: {e}") from e
+            raise SyncTaskQueueError(
+                "Failed to enqueue task", operation="enqueue", cause=e
+            ) from e
 
     def get_result(
         self, task_id: str, timeout: Optional[int] = None
@@ -165,14 +189,15 @@ class SyncTaskQueue:
             ValueError: If task_id is empty or timeout is negative.
         """
         if not self._started or not self._task_queue or not self._loop:
-            raise RuntimeError("SyncTaskQueue is not running. Use as context manager.")
+            raise RuntimeError(
+                "SyncTaskQueue is not running - use 'with SyncTaskQueue(...)' context manager to start it"
+            )
 
         # Input validation
-        if not task_id or not task_id.strip():
-            raise ValueError("task_id must be a non-empty string")
+        validate(task_id, "task_id").is_required().is_string().min_length(1).validate()
 
-        if timeout is not None and timeout < 0:
-            raise ValueError("timeout must be non-negative")
+        if timeout is not None:
+            validate(timeout, "timeout").is_non_negative().validate()
 
         # Run the async get_result in the event loop thread
         try:
@@ -189,15 +214,22 @@ class SyncTaskQueue:
 
         if result.status == "failed":
             # Raise exception for failed tasks
-            raise RuntimeError(f"Task {task_id} failed: {result.error}")
+            raise TaskExecutionError(
+                f"Task {task_id} failed: {result.error}",
+                task_id=task_id,
+                cause=RuntimeError(result.error),
+            )
 
         if result.status == "success" and result.value:
             # Deserialize successful result
             try:
                 return self.serializer.deserialize_result(result.value)
             except Exception as e:
-                raise RuntimeError(
-                    f"Failed to deserialize result for task {task_id}: {e}"
+                raise SerializationError(
+                    f"Failed to deserialize result for task {task_id}: {e}",
+                    operation="deserialize",
+                    data_type="result",
+                    cause=e,
                 ) from e
 
         return result

@@ -6,6 +6,8 @@ from datetime import datetime, timezone, timedelta
 from typing import AsyncGenerator, List, Optional, Sequence
 
 from ..core import Result, ReservedTask, Task
+from ..exceptions import BackendError, ValidationError, ConnectionError
+from ..validation import validate, validate_optional, retry_async
 from .base import Backend
 
 
@@ -13,24 +15,36 @@ class SQLiteBackend(Backend):
     """SQLite backend for task queue persistence."""
 
     def __init__(self, database_path: str = ":memory:"):
+        # Validate database_path parameter
+        validate(database_path, "database_path").is_required().is_string()
+
         self.database_path = database_path
         self._initialized = False
         self._is_memory = database_path == ":memory:"
         self._shared_connection = None
         self._connection_lock = asyncio.Lock()
 
+    @retry_async(max_attempts=3, base_delay=0.5, max_delay=5.0)
     async def _get_connection(self) -> aiosqlite.Connection:
         """Get a database connection, shared for in-memory databases."""
-        if self._is_memory:
-            async with self._connection_lock:
-                if self._shared_connection is None:
-                    self._shared_connection = await aiosqlite.connect(
-                        self.database_path
-                    )
-                return self._shared_connection
-        else:
-            # For file databases, create new connection each time
-            return await aiosqlite.connect(self.database_path)
+        try:
+            if self._is_memory:
+                async with self._connection_lock:
+                    if self._shared_connection is None:
+                        self._shared_connection = await aiosqlite.connect(
+                            self.database_path
+                        )
+                    return self._shared_connection
+            else:
+                # For file databases, create new connection each time
+                return await aiosqlite.connect(self.database_path)
+        except Exception as e:
+            raise ConnectionError(
+                f"Failed to connect to SQLite database '{self.database_path}': {e}",
+                backend_type="sqlite",
+                connection_details=f"database_path={self.database_path}",
+                cause=e,
+            ) from e
 
     async def _with_connection(self, operation_func):
         """Execute an operation with proper connection handling."""
@@ -111,8 +125,15 @@ class SQLiteBackend(Backend):
         await self._with_connection(init_db)
         self._initialized = True
 
+    @retry_async(max_attempts=3, base_delay=0.5, max_delay=5.0)
     async def enqueue(self, task: Task) -> None:
         """Add a task to the queue."""
+        # Validate task parameter
+        if task is None:
+            raise ValidationError(
+                "Task cannot be None - provide a valid Task instance", parameter="task"
+            )
+
         await self.initialize()
 
         async def enqueue_task(db):
@@ -146,10 +167,24 @@ class SQLiteBackend(Backend):
             )
             await db.commit()
 
-        await self._with_connection(enqueue_task)
+        try:
+            await self._with_connection(enqueue_task)
+        except Exception as e:
+            raise BackendError(
+                f"Failed to enqueue task {task.id}: {e}",
+                operation="enqueue",
+                task_id=task.id,
+                backend_type="sqlite",
+                cause=e,
+            ) from e
 
+    @retry_async(max_attempts=3, base_delay=0.5, max_delay=5.0)
     async def reserve(self, max_items: int, now: datetime) -> List[ReservedTask]:
         """Reserve tasks for execution."""
+        # Validate parameters
+        validate(max_items, "max_items").is_required().is_integer().is_positive_number()
+        validate(now, "now").is_required().is_timezone_aware()
+
         await self.initialize()
 
         async def reserve_tasks(db):
@@ -189,10 +224,22 @@ class SQLiteBackend(Backend):
             await db.commit()
             return reserved_tasks
 
-        return await self._with_connection(reserve_tasks)
+        try:
+            return await self._with_connection(reserve_tasks)
+        except Exception as e:
+            raise BackendError(
+                f"Failed to reserve tasks: {e}",
+                operation="reserve",
+                backend_type="sqlite",
+                cause=e,
+            ) from e
 
     async def mark_success(self, task_id: str, result_value: bytes) -> None:
         """Mark a task as successfully completed."""
+        # Validate parameters
+        validate(task_id, "task_id").is_required().is_non_empty_string()
+        validate(result_value, "result_value").is_required()
+
         await self.initialize()
 
         async def mark_success_task(db):
@@ -208,10 +255,24 @@ class SQLiteBackend(Backend):
             )
             await db.commit()
 
-        await self._with_connection(mark_success_task)
+        try:
+            await self._with_connection(mark_success_task)
+        except Exception as e:
+            raise BackendError(
+                f"Failed to mark task {task_id} as success: {e}",
+                operation="mark_success",
+                task_id=task_id,
+                backend_type="sqlite",
+                cause=e,
+            ) from e
 
     async def mark_failure(self, task_id: str, error: str, traceback: str) -> None:
         """Mark a task as failed."""
+        # Validate parameters
+        validate(task_id, "task_id").is_required().is_non_empty_string()
+        validate(error, "error").is_required().is_string()
+        validate(traceback, "traceback").is_required().is_string()
+
         await self.initialize()
 
         async def mark_failure_task(db):
@@ -227,10 +288,22 @@ class SQLiteBackend(Backend):
             )
             await db.commit()
 
-        await self._with_connection(mark_failure_task)
+        try:
+            await self._with_connection(mark_failure_task)
+        except Exception as e:
+            raise BackendError(
+                f"Failed to mark task {task_id} as failed: {e}",
+                operation="mark_failure",
+                task_id=task_id,
+                backend_type="sqlite",
+                cause=e,
+            ) from e
 
     async def get_result(self, task_id: str) -> Optional[Result]:
         """Get the result of a task."""
+        # Validate task_id parameter
+        validate(task_id, "task_id").is_required().is_non_empty_string()
+
         await self.initialize()
 
         async def get_result_task(db):
@@ -293,7 +366,16 @@ class SQLiteBackend(Backend):
                 # Task is still pending or reserved
                 return None
 
-        return await self._with_connection(get_result_task)
+        try:
+            return await self._with_connection(get_result_task)
+        except Exception as e:
+            raise BackendError(
+                f"Failed to get result for task {task_id}: {e}",
+                operation="get_result",
+                task_id=task_id,
+                backend_type="sqlite",
+                cause=e,
+            ) from e
 
     async def get_pending_tasks(self, limit: int = 100) -> AsyncGenerator[Task, None]:
         """Get pending tasks for processing."""
@@ -461,13 +543,29 @@ class SQLiteBackend(Backend):
 
     async def connect(self) -> None:
         """Open any required connections (DB, network, etc.)."""
-        await self.initialize()
+        try:
+            await self.initialize()
+        except Exception as e:
+            raise ConnectionError(
+                f"Failed to initialize SQLite backend: {e}",
+                backend_type="sqlite",
+                connection_details=f"database_path={self.database_path}",
+                cause=e,
+            ) from e
 
     async def close(self) -> None:
         """Close database connections."""
-        if self._shared_connection is not None:
-            await self._shared_connection.close()
-            self._shared_connection = None
+        try:
+            if self._shared_connection is not None:
+                await self._shared_connection.close()
+                self._shared_connection = None
+        except Exception as e:
+            raise ConnectionError(
+                f"Failed to close SQLite database connection: {e}",
+                backend_type="sqlite",
+                connection_details=f"database_path={self.database_path}",
+                cause=e,
+            ) from e
 
     async def store_result(self, result: Result) -> None:
         """Persist a task result."""

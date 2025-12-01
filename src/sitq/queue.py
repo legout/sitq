@@ -9,6 +9,19 @@ from typing import Optional, Any
 from .serialization import Serializer, CloudpickleSerializer
 from .core import Task, Result, _now
 from .backends.base import Backend
+from .exceptions import (
+    TaskQueueError,
+    ValidationError,
+    TimeoutError,
+    SerializationError,
+)
+from .validation import (
+    validate,
+    validate_callable,
+    validate_non_empty_string,
+    validate_non_negative_number,
+    validate_timezone_aware_datetime,
+)
 
 
 class TaskQueue:
@@ -24,7 +37,16 @@ class TaskQueue:
         Args:
             backend: Backend instance for persistence.
             serializer: Optional serializer instance. Defaults to CloudpickleSerializer.
+
+        Raises:
+            ValidationError: If backend is None or invalid.
         """
+        # Input validation
+        validate(backend, "backend").is_required().validate()
+
+        if serializer is not None:
+            validate(serializer, "serializer").is_callable().validate()
+
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
 
@@ -50,14 +72,15 @@ class TaskQueue:
             Task ID.
 
         Raises:
-            ValueError: If func is not callable or eta is not timezone-aware.
+            ValidationError: If func is not callable or eta is invalid.
+            TaskQueueError: If task enqueue fails.
+            SerializationError: If task serialization fails.
         """
         # Input validation
-        if not callable(func):
-            raise ValueError("func must be callable")
+        validate(func, "func").is_required().is_callable().validate()
 
-        if eta is not None and eta.tzinfo is None:
-            raise ValueError("eta must be timezone-aware datetime")
+        if eta is not None:
+            validate(eta, "eta").is_timezone_aware().validate()
 
         # Create task envelope using standardized serialization
         try:
@@ -65,7 +88,12 @@ class TaskQueue:
                 func, args, kwargs
             )
         except Exception as e:
-            raise ValueError(f"Failed to serialize task: {e}") from e
+            raise SerializationError(
+                "Failed to serialize task envelope",
+                operation="serialize",
+                data_type="task_envelope",
+                cause=e,
+            ) from e
 
         # Determine available_at timestamp
         available_at = eta if eta else _now()
@@ -77,7 +105,12 @@ class TaskQueue:
         try:
             await self.backend.enqueue(task)
         except Exception as e:
-            raise RuntimeError(f"Failed to enqueue task: {e}") from e
+            raise TaskQueueError(
+                "Failed to enqueue task in backend",
+                task_id=task.id,
+                operation="enqueue",
+                cause=e,
+            ) from e
 
         return task.id
 
@@ -97,11 +130,10 @@ class TaskQueue:
             ValueError: If task_id is empty or timeout is negative.
         """
         # Input validation
-        if not task_id or not task_id.strip():
-            raise ValueError("task_id must be a non-empty string")
+        validate(task_id, "task_id").is_required().is_string().min_length(1).validate()
 
-        if timeout is not None and timeout < 0:
-            raise ValueError("timeout must be non-negative")
+        if timeout is not None:
+            validate(timeout, "timeout").is_non_negative().validate()
 
         start = _now()
 
@@ -112,12 +144,20 @@ class TaskQueue:
                     return result
 
                 if timeout and (_now() - start).total_seconds() > timeout:
-                    return None
+                    raise TimeoutError(
+                        f"Task result retrieval timed out after {timeout} seconds",
+                        task_id=task_id,
+                        timeout_seconds=timeout,
+                        operation="get_result",
+                    )
 
                 await asyncio.sleep(0.5)
             except Exception as e:
-                raise RuntimeError(
-                    f"Failed to get result for task {task_id}: {e}"
+                raise TaskQueueError(
+                    f"Failed to get result for task {task_id}",
+                    task_id=task_id,
+                    operation="get_result",
+                    cause=e,
                 ) from e
 
     def deserialize_result(self, result: Result) -> Any:
@@ -130,15 +170,23 @@ class TaskQueue:
             The deserialized result value, or None if result.value is None.
 
         Raises:
-            ValueError: If result deserialization fails.
+            ValidationError: If result is None.
+            SerializationError: If result deserialization fails.
         """
+        validate(result, "result").is_required().validate()
+
         if result.value is None:
             return None
 
         try:
             return self.serializer.deserialize_result(result.value)
         except Exception as e:
-            raise ValueError(f"Failed to deserialize result: {e}") from e
+            raise SerializationError(
+                "Failed to deserialize result value",
+                operation="deserialize",
+                data_type="result",
+                cause=e,
+            ) from e
 
     async def close(self) -> None:
         """Close the task queue and clean up resources."""

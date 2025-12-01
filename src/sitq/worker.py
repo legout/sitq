@@ -12,6 +12,13 @@ from loguru import logger
 from .backends.base import Backend
 from .core import ReservedTask
 from .serialization import Serializer, CloudpickleSerializer
+from .exceptions import (
+    WorkerError,
+    ValidationError,
+    SerializationError,
+    TaskExecutionError,
+)
+from .validation import validate, validate_callable, validate_positive_number
 
 
 class Worker:
@@ -36,11 +43,18 @@ class Worker:
             ValueError: If max_concurrency is less than 1 or poll_interval is not positive.
         """
         # Input validation
-        if max_concurrency < 1:
-            raise ValueError("max_concurrency must be at least 1")
+        validate(backend, "backend").is_required().validate()
 
-        if poll_interval <= 0:
-            raise ValueError("poll_interval must be positive")
+        validate(max_concurrency, "max_concurrency").is_required().in_range(
+            1, 1000
+        ).validate()
+
+        validate(
+            poll_interval, "poll_interval"
+        ).is_required().is_positive_number().validate()
+
+        if serializer is not None:
+            validate(serializer, "serializer").is_callable().validate()
 
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
@@ -144,11 +158,22 @@ class Worker:
         logger.info("Starting execution of task %s", task_id)
 
         try:
+            # Validate reserved task
+            validate(reserved_task, "reserved_task").is_required().validate()
+            validate(
+                reserved_task.task_id, "task_id"
+            ).is_required().is_string().min_length(1).validate()
+
             # Deserialize and validate the task envelope
             try:
                 envelope = self.serializer.deserialize_task_envelope(reserved_task.func)
-            except ValueError as e:
-                raise ValueError(f"Invalid task envelope: {e}") from e
+            except Exception as e:
+                raise SerializationError(
+                    "Invalid task envelope format",
+                    operation="deserialize",
+                    data_type="task_envelope",
+                    cause=e,
+                ) from e
 
             func = envelope["func"]
             args = envelope["args"]
@@ -156,7 +181,11 @@ class Worker:
 
             # Validate function is callable
             if not callable(func):
-                raise ValueError("Task envelope 'func' must be callable")
+                raise ValidationError(
+                    "Task envelope 'func' must be callable",
+                    parameter="func",
+                    value=func,
+                )
 
             # Execute the function (async or sync)
             if asyncio.iscoroutinefunction(func):
@@ -167,18 +196,51 @@ class Worker:
                 result = await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
             # Serialize and record success
-            serialized_result = self.serializer.serialize_result(result)
-            await self.backend.mark_success(task_id, serialized_result)
-
-            logger.info("Task %s completed successfully", task_id)
+            try:
+                serialized_result = self.serializer.serialize_result(result)
+                await self.backend.mark_success(task_id, serialized_result)
+                logger.info("Task %s completed successfully", task_id)
+            except Exception as e:
+                raise WorkerError(
+                    "Failed to serialize and record task success",
+                    task_id=task_id,
+                    operation="mark_success",
+                    cause=e,
+                ) from e
 
         except Exception as e:
             # Capture error and traceback
             error_msg = str(e)
             tb = traceback.format_exc()
+            function_name = (
+                getattr(func, "__name__", "unknown_function")
+                if "func" in locals()
+                else "unknown_function"
+            )
 
             # Record failure
-            await self.backend.mark_failure(task_id, error_msg, tb)
+            try:
+                await self.backend.mark_failure(task_id, error_msg, tb)
+            except Exception as backend_error:
+                logger.error(
+                    "Failed to record task failure: %s", backend_error, exc_info=True
+                )
+
+            # Raise domain-specific exception
+            if isinstance(e, (ValidationError, SerializationError)):
+                raise TaskExecutionError(
+                    f"Task execution failed: {error_msg}",
+                    task_id=task_id,
+                    function_name=function_name,
+                    cause=e,
+                ) from e
+            else:
+                raise TaskExecutionError(
+                    f"Task execution failed: {error_msg}",
+                    task_id=task_id,
+                    function_name=function_name,
+                    cause=e,
+                ) from e
 
             logger.error("Task %s failed: %s", task_id, error_msg, exc_info=True)
 
