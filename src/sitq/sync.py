@@ -98,7 +98,7 @@ class SyncTaskQueue:
             return
 
         # Close TaskQueue and backend
-        if self._task_queue:
+        if self._task_queue and self._loop:
             asyncio.run_coroutine_threadsafe(
                 self._task_queue.__aexit__(exc_type, exc, tb), self._loop
             ).result()
@@ -127,15 +127,26 @@ class SyncTaskQueue:
 
         Raises:
             RuntimeError: If SyncTaskQueue is not started.
+            ValueError: If func is not callable or eta is not timezone-aware.
         """
         if not self._started or not self._task_queue or not self._loop:
             raise RuntimeError("SyncTaskQueue is not running. Use as context manager.")
 
+        # Input validation
+        if not callable(func):
+            raise ValueError("func must be callable")
+
+        if eta is not None and eta.tzinfo is None:
+            raise ValueError("eta must be timezone-aware datetime")
+
         # Run the async enqueue in the event loop thread
-        future = asyncio.run_coroutine_threadsafe(
-            self._task_queue.enqueue(func, *args, eta=eta, **kwargs), self._loop
-        )
-        return future.result()
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                self._task_queue.enqueue(func, *args, eta=eta, **kwargs), self._loop
+            )
+            return future.result()
+        except Exception as e:
+            raise RuntimeError(f"Failed to enqueue task: {e}") from e
 
     def get_result(
         self, task_id: str, timeout: Optional[int] = None
@@ -151,15 +162,26 @@ class SyncTaskQueue:
 
         Raises:
             RuntimeError: If SyncTaskQueue is not started.
+            ValueError: If task_id is empty or timeout is negative.
         """
         if not self._started or not self._task_queue or not self._loop:
             raise RuntimeError("SyncTaskQueue is not running. Use as context manager.")
 
+        # Input validation
+        if not task_id or not task_id.strip():
+            raise ValueError("task_id must be a non-empty string")
+
+        if timeout is not None and timeout < 0:
+            raise ValueError("timeout must be non-negative")
+
         # Run the async get_result in the event loop thread
-        future = asyncio.run_coroutine_threadsafe(
-            self._task_queue.get_result(task_id, timeout=timeout), self._loop
-        )
-        result = future.result()
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                self._task_queue.get_result(task_id, timeout=timeout), self._loop
+            )
+            result = future.result()
+        except Exception as e:
+            raise RuntimeError(f"Failed to get result for task {task_id}: {e}") from e
 
         # Handle result based on status
         if result is None:
@@ -171,7 +193,12 @@ class SyncTaskQueue:
 
         if result.status == "success" and result.value:
             # Deserialize successful result
-            return self.serializer.loads(result.value)
+            try:
+                return self.serializer.deserialize_result(result.value)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to deserialize result for task {task_id}: {e}"
+                ) from e
 
         return result
 

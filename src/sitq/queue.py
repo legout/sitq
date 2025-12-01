@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 from .serialization import Serializer, CloudpickleSerializer
 from .core import Task, Result, _now
@@ -48,18 +48,37 @@ class TaskQueue:
 
         Returns:
             Task ID.
+
+        Raises:
+            ValueError: If func is not callable or eta is not timezone-aware.
         """
-        # Create task envelope as specified in serialization-core requirements
-        envelope = {"func": func, "args": args, "kwargs": kwargs}
+        # Input validation
+        if not callable(func):
+            raise ValueError("func must be callable")
+
+        if eta is not None and eta.tzinfo is None:
+            raise ValueError("eta must be timezone-aware datetime")
+
+        # Create task envelope using standardized serialization
+        try:
+            serialized_envelope = self.serializer.serialize_task_envelope(
+                func, args, kwargs
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to serialize task: {e}") from e
 
         # Determine available_at timestamp
         available_at = eta if eta else _now()
 
         # Create task
-        task = Task(func=self.serializer.dumps(envelope), available_at=available_at)
+        task = Task(func=serialized_envelope, available_at=available_at)
 
         # Persist task
-        await self.backend.enqueue(task)
+        try:
+            await self.backend.enqueue(task)
+        except Exception as e:
+            raise RuntimeError(f"Failed to enqueue task: {e}") from e
+
         return task.id
 
     async def get_result(
@@ -73,18 +92,53 @@ class TaskQueue:
 
         Returns:
             Task result or None if timeout.
+
+        Raises:
+            ValueError: If task_id is empty or timeout is negative.
         """
+        # Input validation
+        if not task_id or not task_id.strip():
+            raise ValueError("task_id must be a non-empty string")
+
+        if timeout is not None and timeout < 0:
+            raise ValueError("timeout must be non-negative")
+
         start = _now()
 
         while True:
-            result = await self.backend.get_result(task_id)
-            if result:
-                return result
+            try:
+                result = await self.backend.get_result(task_id)
+                if result:
+                    return result
 
-            if timeout and (_now() - start).total_seconds() > timeout:
-                return None
+                if timeout and (_now() - start).total_seconds() > timeout:
+                    return None
 
-            await asyncio.sleep(0.5)
+                await asyncio.sleep(0.5)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to get result for task {task_id}: {e}"
+                ) from e
+
+    def deserialize_result(self, result: Result) -> Any:
+        """Deserialize the result value from a Result object.
+
+        Args:
+            result: The Result object containing serialized value.
+
+        Returns:
+            The deserialized result value, or None if result.value is None.
+
+        Raises:
+            ValueError: If result deserialization fails.
+        """
+        if result.value is None:
+            return None
+
+        try:
+            return self.serializer.deserialize_result(result.value)
+        except Exception as e:
+            raise ValueError(f"Failed to deserialize result: {e}") from e
 
     async def close(self) -> None:
         """Close the task queue and clean up resources."""

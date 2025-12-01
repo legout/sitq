@@ -31,7 +31,17 @@ class Worker:
             serializer: Optional serializer instance. Defaults to CloudpickleSerializer.
             max_concurrency: Maximum number of tasks to execute concurrently.
             poll_interval: Seconds to wait between polling attempts when no tasks available.
+
+        Raises:
+            ValueError: If max_concurrency is less than 1 or poll_interval is not positive.
         """
+        # Input validation
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be at least 1")
+
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be positive")
+
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
         self.max_concurrency = max_concurrency
@@ -120,7 +130,7 @@ class Worker:
                 # Wait a bit before retrying
                 await asyncio.sleep(min(self.poll_interval, 1.0))
 
-    async def _execute_with_semaphore(self, task_coro) -> None:
+    async def _execute_with_semaphore(self, task_coro: asyncio.Task) -> None:
         """Execute task with semaphore limiting."""
         async with self._semaphore:
             if self._shutdown_event.is_set():
@@ -134,11 +144,19 @@ class Worker:
         logger.info("Starting execution of task %s", task_id)
 
         try:
-            # Deserialize the task envelope
-            envelope = self.serializer.loads(reserved_task.func)
+            # Deserialize and validate the task envelope
+            try:
+                envelope = self.serializer.deserialize_task_envelope(reserved_task.func)
+            except ValueError as e:
+                raise ValueError(f"Invalid task envelope: {e}") from e
+
             func = envelope["func"]
-            args = envelope.get("args", [])
-            kwargs = envelope.get("kwargs", {})
+            args = envelope["args"]
+            kwargs = envelope["kwargs"]
+
+            # Validate function is callable
+            if not callable(func):
+                raise ValueError("Task envelope 'func' must be callable")
 
             # Execute the function (async or sync)
             if asyncio.iscoroutinefunction(func):
@@ -146,10 +164,10 @@ class Worker:
             else:
                 # Run sync function in thread pool
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, func, *args, **kwargs)
+                result = await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
             # Serialize and record success
-            serialized_result = self.serializer.dumps(result)
+            serialized_result = self.serializer.serialize_result(result)
             await self.backend.mark_success(task_id, serialized_result)
 
             logger.info("Task %s completed successfully", task_id)
