@@ -48,15 +48,16 @@ class TaskQueue:
         Worker: For processing enqueued tasks
         SyncTaskQueue: For synchronous usage in non-async contexts
         SQLiteBackend: For SQLite-based task persistence
+        Task: For task data structure
+        Result: For task result handling
     """
         # Input validation
         validate(backend, "backend").is_required().validate()
-
+        
         if serializer is not None:
             validate(serializer, "serializer").is_callable().validate()
-
+        
         self.backend = backend
-        self.serializer = serializer or CloudpickleSerializer()
 
     async def __aenter__(self):
         """Enter async context manager and connect to backend.

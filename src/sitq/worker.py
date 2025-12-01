@@ -24,7 +24,31 @@ from .validation import validate, validate_callable, validate_positive_number
 
 
 class Worker:
-    """Worker for executing tasks from the queue."""
+    """Worker for executing tasks from a queue.
+
+    This class provides the task execution engine for sitq. It continuously
+    polls the queue for available tasks, executes them concurrently, and stores
+    the results back to the backend. Workers can be configured with different
+    concurrency levels and polling intervals to suit various use cases.
+
+    Attributes:
+        backend: Backend instance for task reservation and result storage.
+        serializer: Serializer instance for task/result serialization.
+        max_concurrency: Maximum number of concurrent tasks.
+        poll_interval: Seconds between polling attempts.
+        _running: Whether the worker is currently running.
+
+    Example:
+        >>> backend = SQLiteBackend("tasks.db")
+        >>> worker = Worker(backend, max_concurrency=4)
+        >>> await worker.start()  # Start processing tasks
+        >>> await worker.stop()   # Stop gracefully
+
+    See Also:
+        TaskQueue: For enqueuing tasks to be processed by workers
+        SyncTaskQueue: For synchronous task processing
+        SQLiteBackend: For SQLite-based task persistence
+    """
 
     def __init__(
         self,

@@ -33,6 +33,11 @@ class SQLiteBackend(Backend):
         >>> backend = SQLiteBackend("tasks.db")
         >>> await backend.connect()
         >>> # Use backend for task operations
+
+    See Also:
+        TaskQueue: For using this backend with a task queue
+        Worker: For processing tasks stored in this backend
+        Backend: For the base interface this class implements
     """
 
     def __init__(self, database_path: str = ":memory:"):

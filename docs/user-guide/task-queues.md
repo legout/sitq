@@ -289,4 +289,13 @@ print(f"Active connections: {health.active_connections}")
 - [Workers Guide](workers.md) - Learn about task execution
 - [Backends Guide](backends.md) - Explore storage options
 - [Serialization Guide](serialization.md) - Understand data handling
+- [Error Handling Guide](error-handling.md) - Comprehensive error management
 - [Examples](../examples/) - Real-world usage patterns
+
+## See Also
+
+- [`Worker`](../api-reference/worker.md) - For processing enqueued tasks
+- [`SQLiteBackend`](../api-reference/backends/sqlite.md) - For SQLite-based task persistence
+- [`SyncTaskQueue`](../api-reference/sync.md) - For synchronous task processing
+- [`Task`](../api-reference/core.md) - For task data structure
+- [`Result`](../api-reference/core.md) - For task result handling
