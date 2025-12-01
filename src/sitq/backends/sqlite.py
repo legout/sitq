@@ -1,10 +1,9 @@
-import asyncio
 import json
-import sqlite3
+import asyncio
 import uuid
 import aiosqlite
 from datetime import datetime, timezone, timedelta
-from typing import Any, AsyncGenerator, List, Optional, Tuple, Sequence
+from typing import AsyncGenerator, List, Optional, Sequence
 
 from ..core import Result, ReservedTask, Task
 from .base import Backend
@@ -16,13 +15,38 @@ class SQLiteBackend(Backend):
     def __init__(self, database_path: str = ":memory:"):
         self.database_path = database_path
         self._initialized = False
+        self._is_memory = database_path == ":memory:"
+        self._shared_connection = None
+        self._connection_lock = asyncio.Lock()
+
+    async def _get_connection(self) -> aiosqlite.Connection:
+        """Get a database connection, shared for in-memory databases."""
+        if self._is_memory:
+            async with self._connection_lock:
+                if self._shared_connection is None:
+                    self._shared_connection = await aiosqlite.connect(
+                        self.database_path
+                    )
+                return self._shared_connection
+        else:
+            # For file databases, create new connection each time
+            return await aiosqlite.connect(self.database_path)
+
+    async def _with_connection(self, operation_func):
+        """Execute an operation with proper connection handling."""
+        if self._is_memory:
+            db = await self._get_connection()
+            return await operation_func(db)
+        else:
+            async with await self._get_connection() as db:
+                return await operation_func(db)
 
     async def initialize(self) -> None:
         """Initialize database schema and apply migrations."""
         if self._initialized:
             return
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def init_db(db):
             # Configure SQLite for better concurrency
             await db.execute(
                 "PRAGMA journal_mode=WAL"
@@ -43,26 +67,33 @@ class SQLiteBackend(Backend):
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     task_id TEXT PRIMARY KEY,
-                    task_data BLOB NOT NULL,
-                    result_data BLOB,
-                    error_message TEXT,
-                    traceback TEXT,
-                    status TEXT NOT NULL DEFAULT 'pending',
+                    func BLOB NOT NULL,
+                    args BLOB,
+                    kwargs BLOB,
+                    context BLOB,
+                    schedule TEXT,
                     created_at TIMESTAMP NOT NULL,
-                    eta_at TIMESTAMP,
+                    available_at TIMESTAMP NOT NULL,
+                    last_run_time TIMESTAMP,
+                    result_id TEXT,
+                    retries INTEGER DEFAULT 0,
+                    max_retries INTEGER DEFAULT 3,
+                    retry_backoff INTEGER DEFAULT 1,
+                    lock_id TEXT,
+                    locked_until TIMESTAMP,
+                    status TEXT NOT NULL DEFAULT 'pending',
                     started_at TIMESTAMP,
                     completed_at TIMESTAMP,
-                    expires_at TIMESTAMP,
-                    retry_count INTEGER DEFAULT 0,
-                    max_retries INTEGER DEFAULT 0,
-                    context BLOB
+                    result_data BLOB,
+                    error_message TEXT,
+                    traceback TEXT
                 )
             """)
 
             # Create indexes for performance
             await db.execute("""
-                CREATE INDEX IF NOT EXISTS idx_tasks_status_eta 
-                ON tasks(status, eta_at, created_at)
+                CREATE INDEX IF NOT EXISTS idx_tasks_status_available 
+                ON tasks(status, available_at, created_at)
             """)
 
             await db.execute("""
@@ -70,81 +101,87 @@ class SQLiteBackend(Backend):
                 ON tasks(status)
             """)
 
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tasks_lock_id 
+                ON tasks(lock_id)
+            """)
+
             await db.commit()
 
+        await self._with_connection(init_db)
         self._initialized = True
-
-    async def connect(self) -> None:
-        """Open any required connections (DB, network, etc.)."""
-        await self.initialize()
-
-    async def close(self) -> None:
-        """Close / clean up all resources."""
-        # SQLite connections are managed per-method, so no persistent resources to clean up
-        pass
 
     async def enqueue(self, task: Task) -> None:
         """Add a task to the queue."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def enqueue_task(db):
             await db.execute(
                 """
                 INSERT INTO tasks (
-                    task_id, task_data, status, created_at, eta_at, 
-                    expires_at, retry_count, max_retries, context
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    task_id, func, args, kwargs, context, schedule,
+                    created_at, available_at, last_run_time, result_id,
+                    retries, max_retries, retry_backoff, lock_id, locked_until,
+                    status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     task.id,
                     task.func,  # Store serialized function as bytes
-                    "pending",
+                    task.args,
+                    task.kwargs,
+                    task.context,
+                    None,  # schedule
                     task.created_at.isoformat(),
-                    task.available_at.isoformat()
-                    if task.available_at != task.created_at
-                    else None,
-                    None,  # expires_at - not in current Task model
+                    task.available_at.isoformat(),
+                    None,  # last_run_time
+                    None,  # result_id
                     task.retries,
                     task.max_retries,
-                    task.context,  # Store serialized context as bytes
+                    1,  # retry_backoff
+                    None,  # lock_id
+                    None,  # locked_until
+                    "pending",
                 ),
             )
             await db.commit()
+
+        await self._with_connection(enqueue_task)
 
     async def reserve(self, max_items: int, now: datetime) -> List[ReservedTask]:
         """Reserve tasks for execution."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def reserve_tasks(db):
             now_iso = now.isoformat()
 
             # Use transaction to atomically reserve tasks
             async with db.execute(
                 """
                 UPDATE tasks 
-                SET status = 'reserved', started_at = ?
+                SET status = 'reserved', started_at = ?, lock_id = ?, locked_until = ?
                 WHERE task_id IN (
                     SELECT task_id FROM tasks
                     WHERE status = 'pending'
-                    AND (eta_at IS NULL OR eta_at <= ?)
-                    ORDER BY eta_at, created_at
+                    AND available_at <= ?
+                    ORDER BY available_at, created_at
                     LIMIT ?
                 )
-                RETURNING task_id, task_data, context, started_at
+                RETURNING task_id, func, context, started_at
             """,
-                (now_iso, now_iso, max_items),
+                (now_iso, str(uuid.uuid4()), None, now_iso, max_items),
             ) as cursor:
                 rows = await cursor.fetchall()
 
             reserved_tasks = []
             for row in rows:
-                task_id, task_data, context, started_at = row
+                task_id, func, context, started_at = row
 
                 reserved_tasks.append(
                     ReservedTask(
                         task_id=task_id,
-                        func=task_data,  # task_data is already serialized bytes
-                        context=context,  # context is already serialized bytes
+                        func=func,
+                        context=context,
                         started_at=datetime.fromisoformat(started_at),
                     )
                 )
@@ -152,11 +189,13 @@ class SQLiteBackend(Backend):
             await db.commit()
             return reserved_tasks
 
+        return await self._with_connection(reserve_tasks)
+
     async def mark_success(self, task_id: str, result_value: bytes) -> None:
         """Mark a task as successfully completed."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def mark_success_task(db):
             now = datetime.now(timezone.utc).isoformat()
 
             await db.execute(
@@ -169,11 +208,13 @@ class SQLiteBackend(Backend):
             )
             await db.commit()
 
+        await self._with_connection(mark_success_task)
+
     async def mark_failure(self, task_id: str, error: str, traceback: str) -> None:
         """Mark a task as failed."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def mark_failure_task(db):
             now = datetime.now(timezone.utc).isoformat()
 
             await db.execute(
@@ -186,27 +227,35 @@ class SQLiteBackend(Backend):
             )
             await db.commit()
 
+        await self._with_connection(mark_failure_task)
+
     async def get_result(self, task_id: str) -> Optional[Result]:
         """Get the result of a task."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async def get_result_task(db):
             async with db.execute(
                 """
-                SELECT status, result_data, error_message, traceback, created_at, completed_at
+                SELECT status, result_data, error_message, traceback, 
+                       created_at, started_at, completed_at
                 FROM tasks
                 WHERE task_id = ?
             """,
                 (task_id,),
             ) as cursor:
                 row = await cursor.fetchone()
-
             if row is None:
                 return None
 
-            status, result_data, error_message, traceback, created_at, completed_at = (
-                row
-            )
+            (
+                status,
+                result_data,
+                error_message,
+                traceback,
+                created_at,
+                started_at,
+                completed_at,
+            ) = row
 
             if status == "completed":
                 return Result(
@@ -217,6 +266,9 @@ class SQLiteBackend(Backend):
                     error=None,
                     traceback=None,
                     enqueued_at=datetime.fromisoformat(created_at),
+                    started_at=datetime.fromisoformat(started_at)
+                    if started_at
+                    else None,
                     finished_at=datetime.fromisoformat(completed_at)
                     if completed_at
                     else None,
@@ -230,6 +282,9 @@ class SQLiteBackend(Backend):
                     error=error_message,
                     traceback=traceback,
                     enqueued_at=datetime.fromisoformat(created_at),
+                    started_at=datetime.fromisoformat(started_at)
+                    if started_at
+                    else None,
                     finished_at=datetime.fromisoformat(completed_at)
                     if completed_at
                     else None,
@@ -238,47 +293,21 @@ class SQLiteBackend(Backend):
                 # Task is still pending or reserved
                 return None
 
-            status, result_data, error_message, traceback, created_at, completed_at = (
-                row
-            )
-
-            if status == "completed":
-                result_dict = json.loads(result_data) if result_data else {}
-                return Result(
-                    value=result_dict.get("value"),
-                    error=None,
-                    traceback=None,
-                    created_at=datetime.fromisoformat(created_at),
-                    completed_at=datetime.fromisoformat(completed_at)
-                    if completed_at
-                    else None,
-                )
-            elif status == "failed":
-                return Result(
-                    value=None,
-                    error=error_message,
-                    traceback=traceback,
-                    created_at=datetime.fromisoformat(created_at),
-                    completed_at=datetime.fromisoformat(completed_at)
-                    if completed_at
-                    else None,
-                )
-            else:
-                # Task is still pending or reserved
-                return None
+        return await self._with_connection(get_result_task)
 
     async def get_pending_tasks(self, limit: int = 100) -> AsyncGenerator[Task, None]:
         """Get pending tasks for processing."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async with await self._get_connection() as db:
             async with db.execute(
                 """
-                SELECT task_id, task_data, created_at, eta_at, expires_at, 
-                       retry_count, max_retries, context
+                SELECT task_id, func, args, kwargs, context, schedule,
+                       created_at, available_at, last_run_time, result_id,
+                       retries, max_retries, retry_backoff, lock_id, locked_until
                 FROM tasks
                 WHERE status = 'pending'
-                ORDER BY eta_at, created_at
+                ORDER BY available_at, created_at
                 LIMIT ?
             """,
                 (limit,),
@@ -291,15 +320,16 @@ class SQLiteBackend(Backend):
         """Get expired tasks."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async with await self._get_connection() as db:
             now_iso = now.isoformat()
             async with db.execute(
                 """
-                SELECT task_id, task_data, created_at, eta_at, expires_at,
-                       retry_count, max_retries, context
+                SELECT task_id, func, args, kwargs, context, schedule,
+                       created_at, available_at, last_run_time, result_id,
+                       retries, max_retries, retry_backoff, lock_id, locked_until
                 FROM tasks
-                WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ?
-                ORDER BY expires_at
+                WHERE status = 'pending' AND locked_until IS NOT NULL AND locked_until <= ?
+                ORDER BY locked_until
             """,
                 (now_iso,),
             ) as cursor:
@@ -311,7 +341,7 @@ class SQLiteBackend(Backend):
         """Delete a task from the queue."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async with await self._get_connection() as db:
             await db.execute("DELETE FROM tasks WHERE task_id = ?", (task_id,))
             await db.commit()
 
@@ -319,7 +349,7 @@ class SQLiteBackend(Backend):
         """Get queue statistics."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async with await self._get_connection() as db:
             stats = {}
 
             for status in ["pending", "reserved", "completed", "failed"]:
@@ -335,29 +365,40 @@ class SQLiteBackend(Backend):
         """Convert database row to Task object."""
         (
             task_id,
-            task_data,
-            created_at,
-            eta_at,
-            expires_at,
-            retry_count,
-            max_retries,
+            func,
+            args,
+            kwargs,
             context,
+            schedule,
+            created_at,
+            available_at,
+            last_run_time,
+            result_id,
+            retries,
+            max_retries,
+            retry_backoff,
+            lock_id,
+            locked_until,
         ) = row
 
-        task_dict = json.loads(task_data)
-        context_dict = json.loads(context) if context else {}
-
         return Task(
-            task_id=task_id,
-            func=task_dict["func"],
-            args=task_dict["args"],
-            kwargs=task_dict["kwargs"],
+            id=task_id,
+            func=func,  # Already serialized bytes
+            args=args,
+            kwargs=kwargs,
+            context=context,  # Already serialized bytes
+            schedule=json.loads(schedule) if schedule else None,
             created_at=datetime.fromisoformat(created_at),
-            eta_at=datetime.fromisoformat(eta_at) if eta_at else None,
-            expires_at=datetime.fromisoformat(expires_at) if expires_at else None,
-            retry_count=retry_count,
+            available_at=datetime.fromisoformat(available_at),
+            last_run_time=datetime.fromisoformat(last_run_time)
+            if last_run_time
+            else None,
+            result_id=result_id,
+            retries=retries,
             max_retries=max_retries,
-            context=context_dict,
+            retry_backoff=retry_backoff,
+            lock_id=lock_id,
+            locked_until=datetime.fromisoformat(locked_until) if locked_until else None,
         )
 
     # Legacy compatibility methods
@@ -366,22 +407,27 @@ class SQLiteBackend(Backend):
         reserved_tasks = await self.reserve(limit, datetime.now(timezone.utc))
         return [
             Task(
-                task_id=rt.task_id,
+                id=rt.task_id,
                 func=rt.func,
-                args=[],  # Not available in ReservedTask
-                kwargs={},  # Not available in ReservedTask
-                created_at=rt.started_at,
-                eta_at=None,
-                expires_at=None,
-                retry_count=0,
-                max_retries=0,
+                args=None,  # Not available in ReservedTask
+                kwargs=None,  # Not available in ReservedTask
                 context=rt.context,
+                created_at=rt.started_at,
+                available_at=rt.started_at,
+                last_run_time=None,
+                result_id=None,
+                retries=0,
+                max_retries=3,
+                retry_backoff=1,
+                lock_id=None,
+                locked_until=None,
+                schedule=None,
             )
             for rt in reserved_tasks
         ]
 
     async def update_task_state(self, task_id: str, **kwargs) -> None:
-        """Patch a task row (e.g. next_run_time, retries)."""
+        """Patch a task row (e.g. available_at, retries)."""
         await self.initialize()
 
         if not kwargs:
@@ -392,46 +438,65 @@ class SQLiteBackend(Backend):
         values = []
 
         for key, value in kwargs.items():
-            if key in ["retry_count", "max_retries"]:
+            if key in ["retries", "max_retries", "retry_backoff"]:
                 set_clauses.append(f"{key} = ?")
                 values.append(value)
-            elif key in ["eta_at", "expires_at"]:
+            elif key in ["available_at", "last_run_time", "locked_until"]:
                 set_clauses.append(f"{key} = ?")
                 values.append(value.isoformat() if value else None)
+            elif key in ["lock_id", "result_id"]:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+            elif key == "schedule":
+                set_clauses.append(f"{key} = ?")
+                values.append(json.dumps(value) if value else None)
 
         if set_clauses:
             sql = f"UPDATE tasks SET {', '.join(set_clauses)} WHERE task_id = ?"
             values.append(task_id)
 
-            async with aiosqlite.connect(self.database_path) as db:
+            async with await self._get_connection() as db:
                 await db.execute(sql, values)
-                await db.commit()
+            await db.commit()
+
+    async def connect(self) -> None:
+        """Open any required connections (DB, network, etc.)."""
+        await self.initialize()
+
+    async def close(self) -> None:
+        """Close database connections."""
+        if self._shared_connection is not None:
+            await self._shared_connection.close()
+            self._shared_connection = None
 
     async def store_result(self, result: Result) -> None:
         """Persist a task result."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
-            if result.error:
-                await self.mark_failure(
-                    result.task_id, result.error, result.traceback or ""
-                )
-            else:
-                await self.mark_success(result.task_id, result.value or b"")
+        if result.error:
+            await self.mark_failure(
+                result.task_id, result.error, result.traceback or ""
+            )
+        else:
+            await self.mark_success(result.task_id, result.value or b"")
 
     async def claim_task(self, task_id: str, lock_timeout: int = 30) -> bool:
         """Atomically claim a task for processing."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
-            # Try to update the task status to 'claimed' if it's still pending
+        async with await self._get_connection() as db:
+            now = datetime.now(timezone.utc)
+            lock_id = str(uuid.uuid4())
+            locked_until = now + timedelta(seconds=lock_timeout)
+
+            # Try to update the task status to 'reserved' if it's still pending
             cursor = await db.execute(
                 """
                 UPDATE tasks 
-                SET status = 'claimed', started_at = ?
+                SET status = 'reserved', started_at = ?, lock_id = ?, locked_until = ?
                 WHERE task_id = ? AND status = 'pending'
             """,
-                (datetime.now(timezone.utc).isoformat(), task_id),
+                (now.isoformat(), lock_id, locked_until.isoformat(), task_id),
             )
 
             await db.commit()
@@ -441,12 +506,12 @@ class SQLiteBackend(Backend):
         """Release lock for task_id (called when a worker aborts)."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
+        async with await self._get_connection() as db:
             await db.execute(
                 """
                 UPDATE tasks 
-                SET status = 'pending', started_at = NULL
-                WHERE task_id = ? AND status = 'claimed'
+                SET status = 'pending', started_at = NULL, lock_id = NULL, locked_until = NULL
+                WHERE task_id = ? AND status = 'reserved'
             """,
                 (task_id,),
             )
@@ -456,20 +521,22 @@ class SQLiteBackend(Backend):
         """Reschedule a failed task after delay seconds and bump retry counter."""
         await self.initialize()
 
-        async with aiosqlite.connect(self.database_path) as db:
-            # Calculate new ETA time and increment retry count
-            new_eta = datetime.now(timezone.utc) + timedelta(seconds=delay)
+        async with await self._get_connection() as db:
+            # Calculate new available_at time and increment retry count
+            new_available_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
             await db.execute(
                 """
                 UPDATE tasks 
                 SET status = 'pending', 
-                    eta_at = ?,
-                    retry_count = retry_count + 1,
+                    available_at = ?,
+                    retries = retries + 1,
                     started_at = NULL,
-                    completed_at = NULL
+                    completed_at = NULL,
+                    lock_id = NULL,
+                    locked_until = NULL
                 WHERE task_id = ?
             """,
-                (new_eta.isoformat(), task_id),
+                (new_available_at.isoformat(), task_id),
             )
             await db.commit()
