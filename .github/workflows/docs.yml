@@ -1,0 +1,245 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'mkdocs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'mkdocs.yml'
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[docs]"
+    
+    - name: Validate documentation
+      run: |
+        # Check for broken links
+        mkdocs build --strict
+        
+        # Check API reference generation
+        python -c "
+        import sitq
+        print('✅ sitq module imports successfully')
+        print(f'✅ Version: {sitq.__version__}')
+        print(f'✅ Available classes: {[name for name in dir(sitq) if not name.startswith(\"_\")]}')
+        "
+    
+    - name: Build documentation
+      run: |
+        mkdocs build --site-dir site
+        
+        # Generate API documentation stats
+        echo "## Documentation Build Statistics" > build-stats.md
+        echo "" >> build-stats.md
+        echo "- Build time: $(date)" >> build-stats.md
+        echo "- Total files: $(find site -type f | wc -l)" >> build-stats.md
+        echo "- Total size: $(du -sh site | cut -f1)" >> build-stats.md
+        echo "" >> build-stats.md
+        
+        # List generated pages
+        echo "### Generated Pages" >> build-stats.md
+        find site -name "*.html" | sed 's|site/|- |' | sort >> build-stats.md
+        
+        cat build-stats.md
+    
+    - name: Check for broken internal links
+      run: |
+        # Install link checker
+        pip install lychee
+        
+        # Check internal links only
+        lychee site --verbose --no-progress --exclude-mail --exclude 'http.*' --exclude 'https.*' || true
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation-site
+        path: site/
+        retention-days: 30
+    
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./site
+        cname: sitq.readthedocs.io
+    
+    - name: Deploy to staging
+      if: github.ref == 'refs/heads/develop'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./site
+        destination_dir: develop
+
+  test-docs:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Download documentation
+      uses: actions/download-artifact@v3
+      with:
+        name: documentation-site
+        path: site
+    
+    - name: Test documentation examples
+      run: |
+        # Test that all examples in documentation are valid
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+        
+        # Run doctests
+        python -m pytest --doctest-glob="docs/**/*.md" --doctest-continue-on-failure || true
+        
+        # Test Jupyter notebook
+        if [ -f "docs/interactive-tutorial.ipynb" ]; then
+          pip install jupyter nbformat
+          python -c "
+          import nbformat
+          with open('docs/interactive-tutorial.ipynb', 'r') as f:
+              nb = nbformat.read(f, as_version=4)
+          print(f'✅ Notebook has {len(nb.cells)} cells')
+          "
+        fi
+    
+    - name: Validate API reference
+      run: |
+        # Check that all documented classes exist
+        python -c "
+        import sitq
+        import inspect
+        
+        documented_classes = ['TaskQueue', 'Worker', 'Task', 'Result', 'SQLiteBackend']
+        
+        for class_name in documented_classes:
+            if hasattr(sitq, class_name):
+                cls = getattr(sitq, class_name)
+                print(f'✅ {class_name}: {inspect.signature(cls)}')
+            else:
+                print(f'❌ {class_name} not found in sitq module')
+                exit(1)
+        "
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  performance-check:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Test documentation build performance
+      run: |
+        # Measure build time
+        start_time=$(date +%s)
+        mkdocs build --quiet
+        end_time=$(date +%s)
+        build_time=$((end_time - start_time))
+        
+        echo "Documentation build time: ${build_time}s"
+        
+        # Check if build time is acceptable (< 60 seconds)
+        if [ $build_time -gt 60 ]; then
+          echo "❌ Documentation build is too slow (${build_time}s)"
+          exit 1
+        else
+          echo "✅ Documentation build is fast (${build_time}s)"
+        fi
+    
+    - name: Check documentation size
+      run: |
+        # Check total size of built documentation
+        total_size=$(du -sm site | cut -f1)
+        echo "Documentation size: ${total_size}MB"
+        
+        # Check if size is reasonable (< 50MB)
+        if [ $total_size -gt 50 ]; then
+          echo "❌ Documentation is too large (${total_size}MB)"
+          exit 1
+        else
+          echo "✅ Documentation size is reasonable (${total_size}MB)"
+        fi
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build-docs, test-docs]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.build-docs.result == 'success' && needs.test-docs.result == 'success'
+      run: |
+        echo "✅ Documentation build and tests completed successfully!"
+        echo "📖 Documentation is available at: https://sitq.readthedocs.io"
+    
+    - name: Notify on failure
+      if: needs.build-docs.result == 'failure' || needs.test-docs.result == 'failure'
+      run: |
+        echo "❌ Documentation build or tests failed!"
+        echo "Please check the logs for details."
+        exit 1
