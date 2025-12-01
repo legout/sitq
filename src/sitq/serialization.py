@@ -7,6 +7,8 @@ API is not exposed as a public pluggable interface in v1.
 
 from __future__ import annotations
 
+__all__ = ["Serializer", "CloudpickleSerializer", "TaskEnvelope"]
+
 import cloudpickle
 from typing import Protocol, runtime_checkable, TypedDict, Dict, Any, Optional, cast
 
@@ -62,7 +64,16 @@ class CloudpickleSerializer:
 
     This serializer uses cloudpickle to handle Python objects that may include
     functions, classes, and other complex types that standard pickle cannot
-    handle.
+    handle. It provides the primary serialization mechanism for sitq tasks
+    and results.
+
+    Attributes:
+        No additional attributes beyond the Serializer protocol.
+
+    Example:
+        >>> serializer = CloudpickleSerializer()
+        >>> data = serializer.dumps(my_function)
+        >>> func = serializer.loads(data)
     """
 
     def dumps(self, obj: object) -> bytes:

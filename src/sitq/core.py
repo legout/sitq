@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Task", "Result", "ReservedTask", "_now"]
+
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -10,7 +12,27 @@ from typing import Optional, Any
 
 @dataclass
 class Result:
-    """Result of a finished task execution."""
+    """Result of a finished task execution.
+
+    Attributes:
+        id: Unique identifier for this result record.
+        task_id: ID of the task this result belongs to.
+        status: Execution status - "success", "failed", or "pending".
+        value: Serialized return value from successful task execution.
+        error: Human-readable error message for failed tasks.
+        traceback: Formatted stack trace for failed tasks.
+        enqueued_at: UTC timestamp when task was enqueued.
+        started_at: UTC timestamp when task execution began.
+        finished_at: UTC timestamp when task completed (success or failure).
+
+    Example:
+        >>> result = Result(
+        ...     task_id="abc123",
+        ...     status="success",
+        ...     value=b'"Hello, World!"',
+        ...     enqueued_at=datetime.now(timezone.utc)
+        ... )
+    """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     task_id: str = ""
@@ -25,7 +47,33 @@ class Result:
 
 @dataclass
 class Task:
-    """A unit of work that the queue will execute."""
+    """A unit of work that the queue will execute.
+
+    Attributes:
+        id: Unique identifier for this task.
+        func: Serialized callable envelope containing function and arguments.
+        args: Legacy field - not used in current implementation.
+        kwargs: Legacy field - not used in current implementation.
+        context: Serialized contextvars.Context for task execution.
+        schedule: Optional scheduling configuration for recurring tasks.
+        created_at: UTC timestamp when task was created.
+        available_at: UTC timestamp when task becomes eligible for execution.
+        last_run_time: UTC timestamp of most recent execution attempt.
+        result_id: Reference to result record when task completes.
+
+    Retry and locking attributes:
+        retries: Number of times this task has been attempted.
+        max_retries: Maximum number of retry attempts allowed.
+        retry_backoff: Backoff multiplier for retry delays.
+        lock_id: Identifier of worker currently processing this task.
+        locked_until: UTC timestamp when worker lock expires.
+
+    Example:
+        >>> task = Task(
+        ...     func=serialized_function,
+        ...     available_at=datetime.now(timezone.utc)
+        ... )
+    """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     func: bytes = b""  # Serialized callable envelope
@@ -48,7 +96,25 @@ class Task:
 
 @dataclass
 class ReservedTask:
-    """A task that has been reserved for execution by a worker."""
+    """A task that has been reserved for execution by a worker.
+
+    This represents a task that has been claimed by a worker but
+    not yet completed. It contains the minimal information needed
+    for task execution.
+
+    Attributes:
+        task_id: Unique identifier of the reserved task.
+        func: Serialized callable envelope containing function to execute.
+        context: Serialized contextvars.Context for task execution.
+        started_at: UTC timestamp when task was reserved by worker.
+
+    Example:
+        >>> reserved = ReservedTask(
+        ...     task_id="abc123",
+        ...     func=serialized_function,
+        ...     started_at=datetime.now(timezone.utc)
+        ... )
+    """
 
     task_id: str
     func: bytes  # Serialized callable envelope

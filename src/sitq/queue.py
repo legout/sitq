@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["TaskQueue"]
+
 import asyncio
 from datetime import datetime
 from typing import Optional, Any
@@ -25,22 +27,28 @@ from .validation import (
 
 
 class TaskQueue:
-    """Async task queue for enqueuing tasks and retrieving results."""
+    """Async task queue for enqueuing background jobs and retrieving results.
 
-    def __init__(
-        self,
-        backend: Backend,
-        serializer: Optional[Serializer] = None,
-    ):
-        """Initialize the task queue.
+    This class provides the primary interface for enqueuing tasks and retrieving
+    their results. It manages task persistence through a backend and handles
+    serialization using the configured serializer.
 
-        Args:
-            backend: Backend instance for persistence.
-            serializer: Optional serializer instance. Defaults to CloudpickleSerializer.
+    Attributes:
+        backend: Backend instance for task persistence.
+        serializer: Serializer instance for task/result serialization.
+        _initialized: Whether the queue has been initialized.
 
-        Raises:
-            ValidationError: If backend is None or invalid.
-        """
+    Example:
+        >>> backend = SQLiteBackend("tasks.db")
+        >>> queue = TaskQueue(backend=backend)
+        >>> task_id = await queue.enqueue(my_function, arg1, arg2)
+        >>> result = await queue.get_result(task_id)
+
+    See Also:
+        Worker: For processing enqueued tasks
+        SyncTaskQueue: For synchronous usage in non-async contexts
+        SQLiteBackend: For SQLite-based task persistence
+    """
         # Input validation
         validate(backend, "backend").is_required().validate()
 
@@ -51,10 +59,25 @@ class TaskQueue:
         self.serializer = serializer or CloudpickleSerializer()
 
     async def __aenter__(self):
+        """Enter async context manager and connect to backend.
+
+        Returns:
+            TaskQueue: The task queue instance.
+
+        Raises:
+            BackendError: If backend connection fails.
+        """
         await self.backend.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        """Exit async context manager and close backend connection.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc: Exception instance if an exception occurred.
+            tb: Traceback if an exception occurred.
+        """
         await self.backend.__aexit__(exc_type, exc, tb)
 
     async def enqueue(
@@ -172,6 +195,12 @@ class TaskQueue:
         Raises:
             ValidationError: If result is None.
             SerializationError: If result deserialization fails.
+
+        Example:
+            >>> queue = TaskQueue(backend)
+            >>> result = await queue.get_result(task_id)
+            >>> if result and result.status == "success":
+            ...     value = queue.deserialize_result(result)
         """
         validate(result, "result").is_required().validate()
 
@@ -189,5 +218,12 @@ class TaskQueue:
             ) from e
 
     async def close(self) -> None:
-        """Close the task queue and clean up resources."""
+        """Close the task queue and clean up resources.
+
+        This method closes the underlying backend connection and should be called
+        when the task queue is no longer needed.
+
+        Raises:
+            BackendError: If backend cleanup fails.
+        """
         await self.backend.close()

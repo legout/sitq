@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Worker"]
+
 import asyncio
 import traceback
 from datetime import datetime, timezone
@@ -67,8 +69,21 @@ class Worker:
         self._semaphore = asyncio.Semaphore(max_concurrency)
         self._tasks: set[asyncio.Task] = set()
 
-    async def start(self) -> None:
-        """Start the worker."""
+async def start(self) -> None:
+        """Start the worker and begin processing tasks.
+
+        This method starts the worker's polling loop, which will continuously
+        check for available tasks and execute them up to the configured
+        concurrency limit.
+
+        Raises:
+            BackendError: If backend connection fails.
+            WorkerError: If polling loop encounters unrecoverable error.
+
+        Example:
+            >>> worker = Worker(backend, max_concurrency=5)
+            >>> await worker.start()  # Runs until stop() is called
+        """
         if self._running:
             logger.warning("Worker is already running")
             return
@@ -94,8 +109,18 @@ class Worker:
             self._running = False
             logger.info("Worker stopped")
 
-    async def stop(self) -> None:
-        """Stop the worker gracefully."""
+async def stop(self) -> None:
+        """Stop the worker gracefully.
+
+        This method stops the polling loop and waits for all in-flight
+        tasks to complete before returning. It will block until all
+        currently executing tasks finish.
+
+        Example:
+            >>> worker = Worker(backend)
+            >>> await worker.start()
+            >>> await worker.stop()  # Waits for tasks to finish
+        """
         if not self._running:
             logger.debug("Worker is not running")
             return

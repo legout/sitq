@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["SyncTaskQueue"]
+
 import asyncio
 import threading
 from datetime import datetime
@@ -71,8 +73,25 @@ class SyncTaskQueue:
         self._task_queue: Optional[TaskQueue] = None
         self._started = False
 
-    def __enter__(self) -> "SyncTaskQueue":
-        """Enter context manager and start event loop."""
+def __enter__(self) -> "SyncTaskQueue":
+        """Enter context manager and start event loop.
+
+        This method starts a dedicated event loop in a separate thread
+        and creates a TaskQueue instance. It cannot be used
+        inside an existing event loop.
+
+        Returns:
+            SyncTaskQueue: The configured sync task queue instance.
+
+        Raises:
+            RuntimeError: If SyncTaskQueue is already running or if called
+                       within an existing event loop.
+
+        Example:
+            >>> with SyncTaskQueue(backend) as queue:
+            ...     task_id = queue.enqueue(my_function, arg1, arg2)
+            ...     result = queue.get_result(task_id, timeout=30)
+        """
         if self._started:
             raise RuntimeError(
                 "SyncTaskQueue is already running - stop the current instance before creating a new one"
@@ -102,7 +121,7 @@ class SyncTaskQueue:
 
             time.sleep(0.001)
 
-        # Create TaskQueue instance in the new loop
+        # Create TaskQueue instance in new loop
         self._task_queue = TaskQueue(self.backend, self.serializer)
 
         # Connect backend in the event loop thread
@@ -116,7 +135,21 @@ class SyncTaskQueue:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        """Exit context manager and clean up event loop."""
+        """Exit context manager and clean up event loop.
+
+        This method stops the event loop, closes the TaskQueue
+        and backend connections, and waits for the worker thread to finish.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc: Exception instance if an exception occurred.
+            tb: Traceback if an exception occurred.
+
+        Example:
+            >>> with SyncTaskQueue(backend) as queue:
+            ...     # Use queue here
+            ...     # Cleanup happens automatically on exit
+        """
         if not self._started:
             return
 
@@ -139,6 +172,9 @@ class SyncTaskQueue:
     def enqueue(self, func, *args, eta: Optional[datetime] = None, **kwargs) -> str:
         """Enqueue a task for execution (blocking).
 
+        This method provides a synchronous interface to the async TaskQueue.
+        It blocks until the task is enqueued in the underlying async queue.
+
         Args:
             func: The function to execute.
             *args: Positional arguments for function.
@@ -146,11 +182,17 @@ class SyncTaskQueue:
             **kwargs: Keyword arguments for function.
 
         Returns:
-            Task ID.
+            Task ID for the enqueued task.
 
         Raises:
             RuntimeError: If SyncTaskQueue is not started.
-            ValueError: If func is not callable or eta is not timezone-aware.
+            ValidationError: If func is not callable or eta is invalid.
+            SyncTaskQueueError: If task enqueue fails.
+
+        Example:
+            >>> with SyncTaskQueue(backend) as queue:
+            ...     task_id = queue.enqueue(my_function, arg1, arg2)
+            ...     result = queue.get_result(task_id, timeout=30)
         """
         if not self._started or not self._task_queue or not self._loop:
             raise RuntimeError("SyncTaskQueue is not running. Use as context manager.")
@@ -172,21 +214,32 @@ class SyncTaskQueue:
                 "Failed to enqueue task", operation="enqueue", cause=e
             ) from e
 
-    def get_result(
+def get_result(
         self, task_id: str, timeout: Optional[int] = None
     ) -> Optional[object]:
         """Get result of a task (blocking).
 
+        This method provides a synchronous interface to retrieve task results.
+        It blocks until the result is available or timeout occurs.
+
         Args:
-            task_id: The ID of the task.
-            timeout: Optional timeout in seconds.
+            task_id: The ID of the task to retrieve result for.
+            timeout: Optional timeout in seconds. If None, waits indefinitely.
 
         Returns:
-            Task result or None if timeout.
+            Deserialized task result, or None if timeout occurs.
 
         Raises:
             RuntimeError: If SyncTaskQueue is not started.
-            ValueError: If task_id is empty or timeout is negative.
+            ValidationError: If task_id is empty or timeout is invalid.
+            TaskExecutionError: If task failed to execute.
+            SerializationError: If result deserialization fails.
+
+        Example:
+            >>> with SyncTaskQueue(backend) as queue:
+            ...     task_id = queue.enqueue(my_function, arg1)
+            ...     result = queue.get_result(task_id, timeout=30)
+            ...     # result is the return value of my_function(arg1)
         """
         if not self._started or not self._task_queue or not self._loop:
             raise RuntimeError(

@@ -6,6 +6,20 @@ consistent error handling, proper context, and actionable error messages.
 
 from __future__ import annotations
 
+__all__ = [
+    "SitqError",
+    "TaskQueueError",
+    "BackendError",
+    "WorkerError",
+    "ValidationError",
+    "SerializationError",
+    "ConnectionError",
+    "TaskExecutionError",
+    "TimeoutError",
+    "ResourceExhaustionError",
+    "ConfigurationError",
+]
+
 from typing import Optional, Any, Dict
 from datetime import datetime
 

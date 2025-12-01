@@ -1,3 +1,5 @@
+"""SQLite backend implementation for sitq."""
+
 import json
 import asyncio
 import uuid
@@ -6,15 +8,47 @@ from datetime import datetime, timezone, timedelta
 from typing import AsyncGenerator, List, Optional, Sequence
 
 from ..core import Result, ReservedTask, Task
+
+__all__ = ["SQLiteBackend"]
 from ..exceptions import BackendError, ValidationError, ConnectionError
 from ..validation import validate, validate_optional, retry_async
 from .base import Backend
 
 
 class SQLiteBackend(Backend):
-    """SQLite backend for task queue persistence."""
+    """SQLite backend for task queue persistence.
+
+    This backend provides persistent storage using SQLite database files or
+    in-memory databases for testing and development. It supports
+    concurrent access through WAL mode and proper connection management.
+
+    Attributes:
+        database_path: Path to SQLite database file or ":memory:" for in-memory.
+        _initialized: Whether database schema has been initialized.
+        _is_memory: Whether using in-memory database.
+        _shared_connection: Shared connection for in-memory databases.
+        _connection_lock: Lock for thread-safe connection access.
+
+    Example:
+        >>> backend = SQLiteBackend("tasks.db")
+        >>> await backend.connect()
+        >>> # Use backend for task operations
+    """
 
     def __init__(self, database_path: str = ":memory:"):
+        """Initialize SQLite backend.
+
+        Args:
+            database_path: Path to SQLite database file. Use ":memory:" for
+                in-memory database (useful for testing).
+
+        Raises:
+            ValidationError: If database_path is not a valid string.
+
+        Example:
+            >>> backend = SQLiteBackend("tasks.db")  # File database
+            >>> backend = SQLiteBackend(":memory:")  # In-memory database
+        """
         # Validate database_path parameter
         validate(database_path, "database_path").is_required().is_string()
 
@@ -542,7 +576,20 @@ class SQLiteBackend(Backend):
             await db.commit()
 
     async def connect(self) -> None:
-        """Open any required connections (DB, network, etc.)."""
+        """Open database connection and initialize schema.
+
+        This method establishes connection to the SQLite database and ensures
+        the required tables and indexes are created. For in-memory
+        databases, maintains a shared connection for all operations.
+
+        Raises:
+            ConnectionError: If database connection or initialization fails.
+
+        Example:
+            >>> backend = SQLiteBackend("tasks.db")
+            >>> await backend.connect()
+            >>> # Backend is ready for operations
+        """
         try:
             await self.initialize()
         except Exception as e:
@@ -553,8 +600,21 @@ class SQLiteBackend(Backend):
                 cause=e,
             ) from e
 
-    async def close(self) -> None:
-        """Close database connections."""
+async def close(self) -> None:
+        """Close database connection and clean up resources.
+
+        This method closes the database connection and cleans up any
+        allocated resources. For in-memory databases, it closes the
+        shared connection.
+
+        Raises:
+            ConnectionError: If database connection cleanup fails.
+
+        Example:
+            >>> backend = SQLiteBackend("tasks.db")
+            >>> await backend.connect()
+            >>> await backend.close()  # Clean shutdown
+        """
         try:
             if self._shared_connection is not None:
                 await self._shared_connection.close()
