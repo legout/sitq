@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
-from typing import Optional, Union
+from datetime import datetime
+from typing import Optional
 
 from .serialization import Serializer, CloudpickleSerializer
 from .core import Task, Result, _now

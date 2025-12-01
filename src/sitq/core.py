@@ -19,6 +19,7 @@ class Result:
     error: Optional[str] = None
     traceback: Optional[str] = None
     enqueued_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 
 

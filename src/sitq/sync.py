@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from datetime import datetime, timezone
-from typing import Optional, Union
+from datetime import datetime
+from typing import Optional
 
 from .queue import TaskQueue
 from .serialization import Serializer, CloudpickleSerializer
