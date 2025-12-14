@@ -31,54 +31,28 @@ pip install .
 
 ## Examples
 
-### 1. Basic Usage (SQLite Backend)
+📚 **New to sitq?** Start with our comprehensive [Examples Guide](docs/examples/README.md)!
 
-This example demonstrates the basic workflow: define a task, enqueue it, and run a worker to execute it.
+### Quick Learning Path
 
-**`main.py`**
-```python
-import asyncio
-from sitq import TaskQueue, Worker, Result
-from sitq.backends.sqlite import SQLiteBackend
-from sitq.serialization import CloudpickleSerializer
+- **Basic Examples**: Step-by-step tutorials for fundamental concepts
+- **Advanced Examples**: Production patterns and real-world usage
 
-# 1. Define your async task function
-async def say_hello(name: str):
-    print(f"Hello, {name}")
-    return f"Greetings, {name}!"
+### Example Categories
 
-async def main():
-    # 2. Set up the queue with a backend and serializer
-    backend = SQLiteBackend("example_queue.db")
-    serializer = CloudpickleSerializer()
-    queue = TaskQueue(backend, serializer)
+- **📖 [Basic Examples](docs/examples/basic/)**: Simple, focused examples for learning
+- **🚀 [Advanced Examples](docs/examples/advanced/)**: Production-ready patterns and complex scenarios
 
-    # 3. Enqueue a task and get its ID
-    task_id = await queue.enqueue(say_hello, "World")
-    print(f"Task {task_id} enqueued.")
+### What You'll Learn
 
-    # 4. Start a worker to process the task
-    worker = Worker(backend, serializer, concurrency=5)
+- ✅ Simple task processing and worker management
+- ✅ Task arguments, results, and error handling  
+- ✅ Multiple workers and batch processing
+- ✅ Sync vs async APIs and when to use each
+- ✅ CPU-bound processing and distributed queues
+- ✅ Real-time monitoring and performance optimization
 
-    # Run the worker for a short period to process the task
-    await worker.start()
-    await asyncio.sleep(1) # Allow time for the task to be processed
-    await worker.stop()
-
-    # 5. Retrieve the result
-    result = await queue.get_result(task_id, timeout=5)
-    if result and result.is_success():
-        print(f"Result received: {result.status}")
-        print(f"Task return value: {result.value}")
-    else:
-        print("Did not receive result in time.")
-
-    # 6. Clean up
-    await queue.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+Each example includes detailed explanations, code comments, and practical exercises to help you master sitq concepts progressively.
 
 **To run this:**
 1.  Save the code as `main.py`.
