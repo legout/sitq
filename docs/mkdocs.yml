@@ -1,0 +1,146 @@
+site_name: sitq Documentation
+site_description: Simple Task Queue for Python
+site_author: sitq Contributors
+site_url: https://github.com/username/sitq
+
+# Repository
+repo_name: sitq
+repo_url: https://github.com/username/sitq
+edit_uri: edit/main
+
+# Copyright
+copyright: Copyright (c) 2025 sitq Contributors
+license: MIT
+
+# Configuration
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+# Plugins
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            merge_init_into_class: true
+            show_root_members_full_path: false
+            show_submodules: false
+            show_inherited_members: true
+            show_object_full_path: false
+            show_if_no_docstring: true
+            group_by_submodule: false
+  - mkdocs-jupyter:
+      kernel_name: python3
+  - awesome-pages
+  - git-committers:
+      repository: username/sitq
+      branch: main
+
+# Markdown Extensions
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - footnotes
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+      title: Contents
+
+# Navigation
+nav:
+  - Getting Started:
+    - installation.md
+    - quickstart.md
+    - basic-concepts.md
+  - User Guide:
+    - task-queues.md
+    - workers.md
+    - backends.md
+    - serialization.md
+    - sync-wrapper.md
+    - error-handling.md
+    - examples/
+      - web-app.md
+      - data-processing.md
+      - microservices.md
+  - Examples:
+    - Basic Usage: examples/basic/
+  - API Reference:
+    - core/
+      - queue.md
+      - worker.md
+      - backends/
+        - base.md
+        - sqlite.md
+      - serialization.md
+    - Developer Guide:
+    - architecture.md
+    - contributing.md
+    - testing.md
+    - performance.md
+    - extending.md
+  - Deployment:
+    - production.md
+    - monitoring.md
+    - scaling.md
+  - Appendix:
+    - changelog.md
+    - troubleshooting.md
+    - migration.md
+
+# Documentation Structure
+docs_dir: docs
+exclude_docs: site
+
+# Build Configuration
+use_directory_urls: false
+
+# Development
+validation:
+  omitted_files:
+    - README.md
+    - LICENSE
+
+# Deployment
+not_in_edit:
+  - README.md
