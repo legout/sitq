@@ -1,53 +1,61 @@
 # Microservices Integration
 
-Learn how to integrate sitq into microservices architectures for reliable inter-service communication and task processing.
+> **Note: This is a conceptual example showing how sitq could be used for microservices workflows.**
+> 
+> **Current Implementation Status:** Some features shown here are still under development.
+> 
+> **For working examples, see `examples/basic/` directory.**
 
 ## Overview
 
-In microservices architectures, sitq can serve as:
+In microservices architectures, sitq could serve as:
 - Inter-service communication layer
 - Asynchronous task processing
 - Event-driven architecture backbone
 - Service orchestration tool
 - Load balancing mechanism
 
-## Service-to-Service Communication
+## Conceptual Service Communication
 
-### Basic Service Communication
+This example demonstrates how sitq could be used for microservices workflows:
 
 ```python
-# service_a.py - Producer Service
-import sitq
-import time
-import json
-from flask import Flask, request, jsonify
+# Note: This is a conceptual example
+# Current API may differ from what's shown here
 
-app = Flask(__name__)
+import asyncio
+from typing import Dict
 
-# Task queue for inter-service communication
-queue = sitq.TaskQueue(backend=sitq.SQLiteBackend("microservices.db"))
-
-@app.route('/process-order', methods=['POST'])
-def process_order():
-    """Process order and notify other services."""
-    order_data = request.json
+class MicroserviceOrchestrator:
+    """Conceptual microservice orchestrator using sitq."""
     
-    def notify_inventory_service(order):
-        """Notify inventory service about order."""
-        print(f"Notifying inventory service: {order}")
-        # Simulate API call to inventory service
-        time.sleep(0.5)
-        return {"status": "inventory_updated", "order_id": order["id"]}
+    def __init__(self):
+        # Note: Backend initialization would use current API
+        # backend = SQLiteBackend("microservices.db")
+        # queue = TaskQueue(backend=backend)
+        # worker = Worker(backend)
+        print("MicroserviceOrchestrator initialized (conceptual example)")
     
-    def notify_shipping_service(order):
-        """Notify shipping service about order."""
-        print(f"Notifying shipping service: {order}")
-        # Simulate API call to shipping service
-        time.sleep(0.3)
-        return {"status": "shipping_scheduled", "order_id": order["id"]}
+    def process_order(self, order_data: Dict) -> Dict:
+        """Process order and coordinate other services."""
+        print(f"Processing order: {order_data}")
+        
+        # In real implementation, this would enqueue tasks for:
+        # - Inventory service notification
+        # - Shipping service notification  
+        # - Billing service notification
+        
+        # Simulate order processing
+        return {"status": "processed", "order_id": order_data.get("id")}
     
-    def notify_billing_service(order):
-        """Notify billing service about order."""
+    def notify_service(self, service_name: str, data: Dict) -> Dict:
+        """Notify another microservice."""
+        print(f"Notifying {service_name}: {data}")
+        
+        # In real implementation, this would use HTTP requests, other queues, etc.
+        # Simulate service communication
+        return {"status": "notified", "service": service_name}
+```
         print(f"Notifying billing service: {order}")
         # Simulate API call to billing service
         time.sleep(0.7)

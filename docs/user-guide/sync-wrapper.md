@@ -7,23 +7,30 @@ The synchronous wrapper provides a simplified interface for common use cases whe
 ### Simple Task Processing
 
 ```python
-import sitq
-import time
+import asyncio
+from sitq import SyncTaskQueue, SQLiteBackend
 
-# Use the sync wrapper for simple cases
-with sitq.SyncTaskQueue() as queue:
-    # Define a task
-    def process_data(data):
-        """Process some data."""
-        time.sleep(0.1)  # Simulate work
-        return f"Processed: {data}"
-    
-    # Enqueue and wait for result
-    task = sitq.Task(function=process_data, args=["test_data"])
-    task_id = queue.enqueue(task)
-    result = queue.get_result(task_id)  # Blocks until completion
-    
-    print(f"Result: {result.value}")
+def process_data(data):
+    """Process some data."""
+    return f"Processed: {data}"
+
+async def main():
+    # Use the sync wrapper for simple cases
+    with SyncTaskQueue(backend=SQLiteBackend("tasks.db")) as queue:
+        # Enqueue a task (note: sync wrapper handles async internally)
+        task_id = queue.enqueue(process_data, "test_data")
+        print(f"Task enqueued: {task_id}")
+        
+        # Get result (blocks until completion)
+        result = queue.get_result(task_id, timeout=5)
+        if result and result.status == "success":
+            value = queue.deserialize_result(result)
+            print(f"Result: {value}")
+        else:
+            print(f"Task failed: {result.error if result else 'Unknown error'}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ### One-shot Task Execution
@@ -45,9 +52,10 @@ with sitq.SyncTaskQueue() as queue:
 
 ```python
 # Sync queue with custom backend
-backend = sitq.SQLiteBackend("persistent.db")
-with sitq.SyncTaskQueue(backend=backend) as queue:
-    result = queue.execute(my_function, arg1, arg2)
+backend = SQLiteBackend("persistent.db")
+with SyncTaskQueue(backend=backend) as queue:
+    task_id = queue.enqueue(my_function, arg1, arg2)
+    result = queue.get_result(task_id, timeout=5)
 ```
 
 ### Timeout Configuration

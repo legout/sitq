@@ -29,11 +29,8 @@ Tasks are the fundamental unit of work in sitq. Each task contains:
 - **Metadata**: Task ID, timestamps, and status information
 
 ```python
-task = sitq.Task(
-    function=my_function,
-    args=[1, 2, 3],
-    kwargs={"option": True}
-)
+# Tasks are enqueued directly with functions
+task_id = await queue.enqueue(my_function, 1, 2, 3, option=True)
 ```
 
 ### 2. Task Queue
@@ -45,8 +42,10 @@ The task queue manages task lifecycle:
 - **Result Storage**: Store task results
 
 ```python
-queue = sitq.TaskQueue(backend=sitq.SQLiteBackend())
-task_id = queue.enqueue(task)
+from sitq import TaskQueue, SQLiteBackend
+
+queue = TaskQueue(backend=SQLiteBackend("tasks.db"))
+task_id = await queue.enqueue(my_function, 1, 2, 3, option=True)
 ```
 
 ### 3. Workers

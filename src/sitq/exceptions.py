@@ -18,6 +18,7 @@ __all__ = [
     "TimeoutError",
     "ResourceExhaustionError",
     "ConfigurationError",
+    "SyncTaskQueueError",
 ]
 
 from typing import Optional, Any, Dict
@@ -347,6 +348,35 @@ class ResourceExhaustionError(SitqError):
         self.resource_type = resource_type
         self.current_usage = current_usage
         self.limit = limit
+
+
+class SyncTaskQueueError(TaskQueueError):
+    """Raised when SyncTaskQueue operations fail."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        task_id: Optional[str] = None,
+        operation: Optional[str] = None,
+        cause: Optional[Exception] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize sync task queue error.
+
+        Args:
+            message: Human-readable error message.
+            task_id: ID of the related task, if applicable.
+            operation: Operation that failed (e.g., "enqueue", "get_result").
+            cause: Original exception that caused this error.
+            context: Additional context information.
+        """
+        context = context or {}
+        if operation:
+            context["operation"] = operation
+
+        super().__init__(message, task_id=task_id, cause=cause, context=context)
+        self.operation = operation
 
 
 class ConfigurationError(SitqError):

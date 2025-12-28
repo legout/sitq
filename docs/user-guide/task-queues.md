@@ -5,13 +5,15 @@ Task queues are the central component of sitq, managing the lifecycle of tasks f
 ## Creating a Task Queue
 
 ```python
-import sitq
+import asyncio
+from sitq import TaskQueue, SQLiteBackend
 
-# Basic task queue with SQLite backend
-queue = sitq.TaskQueue(backend=sitq.SQLiteBackend("tasks.db"))
+async def main():
+    # Basic task queue with SQLite backend
+    queue = TaskQueue(backend=SQLiteBackend("tasks.db"))
 
-# In-memory queue for testing
-queue = sitq.TaskQueue(backend=sitq.SQLiteBackend(":memory:"))
+    # In-memory queue for testing
+    memory_queue = TaskQueue(backend=SQLiteBackend(":memory:"))
 ```
 
 ## Enqueuing Tasks
@@ -23,31 +25,24 @@ def process_data(data, multiplier=1):
     """Process data with optional multiplier."""
     return data * multiplier
 
-# Create a task
-task = sitq.Task(
-    function=process_data,
-    args=[42],
-    kwargs={"multiplier": 2}
-)
-
-# Enqueue the task
-task_id = queue.enqueue(task)
+# Enqueue a task directly with function and arguments
+task_id = await queue.enqueue(process_data, 42, multiplier=2)
 print(f"Task enqueued: {task_id}")
 ```
 
 ### Batch Enqueue
 
 ```python
-tasks = []
-for i in range(10):
-    task = sitq.Task(
-        function=process_data,
-        args=[i],
-        kwargs={"multiplier": 10}
-    )
-    tasks.append(task)
+import asyncio
 
-# Enqueue multiple tasks at once
+async def batch_enqueue():
+    tasks = []
+    for i in range(10):
+        task_id = await queue.enqueue(process_data, i, multiplier=10)
+        tasks.append(task_id)
+    
+    print(f"Enqueued {len(tasks)} tasks")
+```
 task_ids = queue.enqueue_batch(tasks)
 print(f"Enqueued {len(task_ids)} tasks")
 ```

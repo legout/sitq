@@ -61,6 +61,7 @@ from .exceptions import (
     TimeoutError,
     ResourceExhaustionError,
     ConfigurationError,
+    SyncTaskQueueError,
 )
 
 # Validation utilities
@@ -93,6 +94,7 @@ __all__ = [
     "TimeoutError",
     "ResourceExhaustionError",
     "ConfigurationError",
+    "SyncTaskQueueError",
     # Utilities
     "validate",
     "ValidationBuilder",

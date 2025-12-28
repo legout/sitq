@@ -80,7 +80,8 @@ class Worker:
         ).is_required().is_positive_number().validate()
 
         if serializer is not None:
-            validate(serializer, "serializer").is_callable().validate()
+            # Serializer should be an object with dumps/loads methods, not necessarily callable
+            validate(serializer, "serializer").is_required().validate()
 
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
@@ -93,7 +94,7 @@ class Worker:
         self._semaphore = asyncio.Semaphore(max_concurrency)
         self._tasks: set[asyncio.Task] = set()
 
-async def start(self) -> None:
+    async def start(self) -> None:
         """Start the worker and begin processing tasks.
 
         This method starts the worker's polling loop, which will continuously
@@ -133,7 +134,7 @@ async def start(self) -> None:
             self._running = False
             logger.info("Worker stopped")
 
-async def stop(self) -> None:
+    async def stop(self) -> None:
         """Stop the worker gracefully.
 
         This method stops the polling loop and waits for all in-flight

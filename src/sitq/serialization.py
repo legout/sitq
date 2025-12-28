@@ -85,13 +85,6 @@ class CloudpickleSerializer:
         Returns:
             Serialized bytes representation of the object.
         """
-        # Validate input
-        if obj is None:
-            raise ValidationError(
-                "Object to serialize cannot be None - provide a valid object to serialize",
-                parameter="obj",
-            )
-
         try:
             return cloudpickle.dumps(obj)
         except Exception as e:
@@ -110,7 +103,7 @@ class CloudpickleSerializer:
             The original Python object.
         """
         # Validate input
-        validate(data, "data").is_required()
+        validate(data, "data").is_required().validate()
 
         try:
             return cloudpickle.loads(data)

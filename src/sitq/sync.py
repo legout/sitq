@@ -13,10 +13,10 @@ from .queue import TaskQueue
 from .serialization import Serializer, CloudpickleSerializer
 from .backends.base import Backend
 from .exceptions import (
-    SyncTaskQueueError,
     ValidationError,
     SerializationError,
     TaskExecutionError,
+    SyncTaskQueueError,
 )
 from .validation import (
     validate,
@@ -64,7 +64,8 @@ class SyncTaskQueue:
         validate(backend, "backend").is_required().validate()
 
         if serializer is not None:
-            validate(serializer, "serializer").is_callable().validate()
+            # Serializer should be an object with dumps/loads methods, not necessarily callable
+            validate(serializer, "serializer").is_required().validate()
 
         self.backend = backend
         self.serializer = serializer or CloudpickleSerializer()
@@ -73,7 +74,7 @@ class SyncTaskQueue:
         self._task_queue: Optional[TaskQueue] = None
         self._started = False
 
-def __enter__(self) -> "SyncTaskQueue":
+    def __enter__(self) -> "SyncTaskQueue":
         """Enter context manager and start event loop.
 
         This method starts a dedicated event loop in a separate thread
@@ -214,7 +215,7 @@ def __enter__(self) -> "SyncTaskQueue":
                 "Failed to enqueue task", operation="enqueue", cause=e
             ) from e
 
-def get_result(
+    def get_result(
         self, task_id: str, timeout: Optional[int] = None
     ) -> Optional[object]:
         """Get result of a task (blocking).
@@ -259,7 +260,12 @@ def get_result(
             )
             result = future.result()
         except Exception as e:
-            raise RuntimeError(f"Failed to get result for task {task_id}: {e}") from e
+            raise SyncTaskQueueError(
+                f"Failed to get result for task {task_id}",
+                task_id=task_id,
+                operation="get_result",
+                cause=e,
+            ) from e
 
         # Handle result based on status
         if result is None:

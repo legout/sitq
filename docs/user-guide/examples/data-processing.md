@@ -1,6 +1,10 @@
 # Data Processing Pipeline
 
-Learn how to build efficient data processing pipelines using sitq for handling large datasets and complex transformations.
+> **Note: This is a conceptual example showing how sitq could be used for data processing workflows.**
+> 
+> **Current Implementation Status:** Some features shown here are still under development.
+> 
+> **For working examples, see `examples/basic/` directory.**
 
 ## Overview
 
@@ -11,34 +15,35 @@ Data processing pipelines often involve:
 - Aggregating results
 - Writing processed data to destinations
 
-sitq excels at orchestrating these workflows while providing reliability and scalability.
+sitq is designed to orchestrate these workflows while providing reliability and scalability.
 
-## Basic Data Processing Pipeline
+## Conceptual ETL Pipeline
 
-### Simple ETL Pipeline
+This example demonstrates how sitq could be used for data processing workflows:
 
 ```python
-import sitq
-import pandas as pd
-import time
+# Note: This is a conceptual example
+# Current API may differ from what's shown here
+
+import asyncio
 from typing import List, Dict, Any
 
 class DataPipeline:
-    """Simple ETL pipeline using sitq."""
+    """Conceptual ETL pipeline using sitq."""
     
-    def __init__(self, backend=None):
-        self.backend = backend or sitq.SQLiteBackend("pipeline.db")
-        self.queue = sitq.TaskQueue(backend=self.backend)
-        self.worker = sitq.Worker(self.queue)
+    def __init__(self):
+        # Note: Backend initialization would use current API
+        # backend = SQLiteBackend("pipeline.db")
+        # queue = TaskQueue(backend=backend)
+        # worker = Worker(backend)
+        print("DataPipeline initialized (conceptual example)")
     
     def extract_data(self, source_path: str) -> List[Dict]:
         """Extract data from source."""
         print(f"Extracting data from {source_path}")
         
         # Simulate data extraction
-        time.sleep(1)
-        
-        # In real scenario, this would read from database, API, file, etc.
+        # In real scenario, this would enqueue extraction tasks
         data = [
             {"id": i, "value": i * 2, "category": f"cat_{i % 3}"}
             for i in range(100)
@@ -48,78 +53,46 @@ class DataPipeline:
     
     def transform_data(self, data: List[Dict]) -> List[Dict]:
         """Transform data."""
-        print(f"Transforming {len(data)} records")
+        print("Transforming data...")
         
         # Simulate data transformation
-        time.sleep(2)
-        
-        transformed = []
-        for record in data:
-            transformed_record = {
-                "id": record["id"],
-                "doubled_value": record["value"] * 2,
-                "category_upper": record["category"].upper(),
-                "processed_at": time.time()
+        # In real scenario, this would enqueue transformation tasks
+        transformed = [
+            {
+                "id": item["id"],
+                "value": item["value"] * 10,
+                "category": item["category"],
+                "processed": True
             }
-            transformed.append(transformed_record)
+            for item in data
+        ]
         
         return transformed
     
-    def load_data(self, data: List[Dict], destination: str) -> int:
+    def load_data(self, data: List[Dict]) -> None:
         """Load data to destination."""
-        print(f"Loading {len(data)} records to {destination}")
+        print(f"Loading {len(data)} transformed records...")
         
         # Simulate data loading
-        time.sleep(1)
-        
-        # In real scenario, this would write to database, file, API, etc.
-        df = pd.DataFrame(data)
-        df.to_csv(destination, index=False)
-        
-        return len(data)
-    
-    def run_pipeline(self, source_path: str, destination: str) -> Dict[str, Any]:
-        """Run the complete pipeline."""
-        print("Starting ETL pipeline...")
-        
-        # Extract
-        extract_task = sitq.Task(
-            function=self.extract_data,
-            args=[source_path]
-        )
-        extract_id = self.queue.enqueue(extract_task)
-        extract_result = self.worker.process_task(extract_id)
-        data = extract_result.value
-        
-        # Transform
-        transform_task = sitq.Task(
-            function=self.transform_data,
-            args=[data]
-        )
-        transform_id = self.queue.enqueue(transform_task)
-        transform_result = self.worker.process_task(transform_id)
-        transformed_data = transform_result.value
-        
-        # Load
-        load_task = sitq.Task(
-            function=self.load_data,
-            args=[transformed_data, destination]
-        )
-        load_id = self.queue.enqueue(load_task)
-        load_result = self.worker.process_task(load_id)
-        
-        return {
-            "source_records": len(data),
-            "transformed_records": len(transformed_data),
-            "loaded_records": load_result.value,
-            "destination": destination
-        }
-
-# Use the pipeline
-pipeline = DataPipeline()
-result = pipeline.run_pipeline("source.csv", "output.csv")
-print(f"Pipeline completed: {result}")
+        # In real scenario, this would enqueue loading tasks
+        for item in data:
+            print(f"  Loaded: {item}")
 ```
+
+## Current Implementation Notes
+
+**Working Features:**
+- Core task queue operations
+- Worker with async/sync function support
+- SQLite backend for persistence
+
+**Under Development:**
+- Full ETL pipeline orchestration
+- Advanced worker configurations
+- Additional backends (PostgreSQL, Redis, NATS)
+
+**For Working Examples:**
+See `examples/basic/` directory for current API demonstrations.
 
 ## Parallel Data Processing
 

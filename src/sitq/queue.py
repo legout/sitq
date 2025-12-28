@@ -51,13 +51,30 @@ class TaskQueue:
         Task: For task data structure
         Result: For task result handling
     """
+
+    def __init__(
+        self,
+        backend: Backend,
+        serializer: Optional[Serializer] = None,
+    ):
+        """Initialize the task queue.
+
+        Args:
+            backend: Backend instance for task persistence.
+            serializer: Optional serializer instance. Defaults to CloudpickleSerializer.
+
+        Raises:
+            ValueError: If backend is None or serializer is not callable.
+        """
         # Input validation
         validate(backend, "backend").is_required().validate()
-        
+
         if serializer is not None:
-            validate(serializer, "serializer").is_callable().validate()
-        
+            # Serializer should be an object with dumps/loads methods, not necessarily callable
+            validate(serializer, "serializer").is_required().validate()
+
         self.backend = backend
+        self.serializer = serializer or CloudpickleSerializer()
 
     async def __aenter__(self):
         """Enter async context manager and connect to backend.
@@ -132,7 +149,6 @@ class TaskQueue:
             raise TaskQueueError(
                 "Failed to enqueue task in backend",
                 task_id=task.id,
-                operation="enqueue",
                 cause=e,
             ) from e
 
@@ -168,19 +184,13 @@ class TaskQueue:
                     return result
 
                 if timeout and (_now() - start).total_seconds() > timeout:
-                    raise TimeoutError(
-                        f"Task result retrieval timed out after {timeout} seconds",
-                        task_id=task_id,
-                        timeout_seconds=timeout,
-                        operation="get_result",
-                    )
+                    return None
 
                 await asyncio.sleep(0.5)
             except Exception as e:
                 raise TaskQueueError(
                     f"Failed to get result for task {task_id}",
                     task_id=task_id,
-                    operation="get_result",
                     cause=e,
                 ) from e
 

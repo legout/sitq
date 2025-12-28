@@ -50,6 +50,34 @@ class MockBackend(Backend):
     async def schedule_retry(self, task_id: str, delay: int):
         pass
 
+    # New abstract method implementations
+    async def reserve(self, max_items: int, now):
+        """Mock reserve - returns empty list for testing."""
+        return []
+
+    async def mark_success(self, task_id: str, result_value: bytes):
+        """Mock mark_success - stores result in results dict."""
+        from src.sitq.core import Result
+
+        result = Result(
+            task_id=task_id,
+            status="success",
+            value=result_value,
+        )
+        self.results[task_id] = result
+
+    async def mark_failure(self, task_id: str, error: str, traceback: str):
+        """Mock mark_failure - stores failure result."""
+        from src.sitq.core import Result
+
+        result = Result(
+            task_id=task_id,
+            status="failed",
+            error=error,
+            traceback=traceback,
+        )
+        self.results[task_id] = result
+
 
 @pytest.fixture
 def mock_backend():

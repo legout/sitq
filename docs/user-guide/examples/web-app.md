@@ -1,6 +1,10 @@
 # Web Application Background Tasks
 
-Learn how to use sitq for handling background tasks in web applications, improving user experience by offloading long-running operations.
+> **Note: This is a conceptual example showing how sitq could be used for web application workflows.**
+> 
+> **Current Implementation Status:** Some features shown here are still under development.
+> 
+> **For working examples, see `examples/basic/` directory.**
 
 ## Overview
 
@@ -11,103 +15,57 @@ Web applications often need to perform time-consuming operations like:
 - Calling external APIs
 - Running data analysis
 
-sitq provides a simple way to handle these tasks in the background without blocking the main web server thread.
+sitq is designed to orchestrate these workflows while providing reliability and scalability.
 
-## Flask Integration
+## Conceptual Web Integration
 
-### Basic Setup
+This example demonstrates how sitq could be used for web application workflows:
 
 ```python
-from flask import Flask, request, jsonify
-import sitq
-import threading
-import time
+# Note: This is a conceptual example
+# Current API may differ from what's shown here
 
-app = Flask(__name__)
+import asyncio
+from typing import Dict
 
-# Global task queue and worker
-queue = sitq.TaskQueue(backend=sitq.SQLiteBackend("web_tasks.db"))
-worker = sitq.Worker(queue)
-
-# Start worker in background thread
-def start_worker():
-    """Start worker in background."""
-    worker.run()
-
-worker_thread = threading.Thread(target=start_worker, daemon=True)
-worker_thread.start()
-
-@app.route('/')
-def index():
-    """Home page."""
-    return jsonify({"message": "Web App with sitq Background Tasks"})
-
-@app.route('/process', methods=['POST'])
-def process_data():
-    """Process data in background."""
-    data = request.json
+class WebTaskProcessor:
+    """Conceptual web task processor using sitq."""
     
-    def background_task(data):
-        """Background processing function."""
-        # Simulate processing time
-        time.sleep(5)
+    def __init__(self):
+        # Note: Backend initialization would use current API
+        # backend = SQLiteBackend("web_tasks.db")
+        # queue = TaskQueue(backend=backend)
+        # worker = Worker(backend)
+        print("WebTaskProcessor initialized (conceptual example)")
+    
+    def process_upload(self, file_data: Dict) -> Dict:
+        """Process uploaded file in background."""
+        print(f"Processing upload: {file_data}")
         
-        # Process the data
-        result = {
-            "input": data,
-            "processed": True,
-            "timestamp": time.time()
-        }
+        # In real implementation, this would enqueue background task
+        # task_id = await queue.enqueue(process_file_data, file_data)
         
-        return result
+        return {"status": "queued", "message": "File queued for processing"}
     
-    # Create and enqueue task
-    task = sitq.Task(
-        function=background_task,
-        args=[data]
-    )
-    
-    task_id = queue.enqueue(task)
-    
-    return jsonify({
-        "success": True,
-        "task_id": task_id,
-        "message": "Task queued for processing"
-    })
+    def process_file_data(self, file_data: Dict) -> str:
+        """Process file data."""
+        # Simulate file processing
+        return f"Processed: {file_data.get('filename', 'unknown')}"
 
-@app.route('/status/<task_id>')
-def get_status(task_id):
-    """Get task status."""
-    try:
-        status = queue.get_task_status(task_id)
-        return jsonify({
-            "task_id": task_id,
-            "status": status
-        })
-    except sitq.TaskNotFoundError:
-        return jsonify({"error": "Task not found"}), 404
+## Current Implementation Notes
 
-@app.route('/result/<task_id>')
-def get_result(task_id):
-    """Get task result."""
-    try:
-        result = queue.get_result(task_id)
-        if result.is_error:
-            return jsonify({
-                "task_id": task_id,
-                "error": str(result.error)
-            }), 500
-        else:
-            return jsonify({
-                "task_id": task_id,
-                "result": result.value
-            })
-    except sitq.TaskNotFoundError:
-        return jsonify({"error": "Task not found"}), 404
+**Working Features:**
+- Core task queue operations
+- Worker with async/sync function support
+- SQLite backend for persistence
 
-if __name__ == '__main__':
-    app.run(debug=True)
-```
+**Under Development:**
+- Full web integration examples
+- Advanced worker configurations
+- Additional backends (PostgreSQL, Redis, NATS)
+
+**For Working Examples:**
+See `examples/basic/` directory for current API demonstrations.
 
 ### Email Sending Example
 

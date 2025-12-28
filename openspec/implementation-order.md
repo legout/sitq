@@ -1,126 +1,73 @@
-# Implementation Order for OpenSpec Proposals
+# Implementation Order for OpenSpec Changes (v1 Refactor)
 
-This document defines the recommended implementation order for the current OpenSpec proposals in the sitq project.
+This document defines the recommended implementation order for the **active** OpenSpec changes under `openspec/changes/` and highlights what can be done in parallel.
 
-## Overview
+## Active Changes
 
-The implementation follows a **bottom-up dependency approach** where each proposal builds on previously implemented capabilities. This minimizes integration risk and allows incremental testing at each stage.
+1. `2025-12-14-stabilize-v1-core`
+2. `2025-12-14-fix-worker-concurrency`
+3. `2025-12-14-test-suite-organization`
+4. `2025-12-14-align-docs-and-deps-v1`
 
-## Implementation Order
+## Recommended Order
 
-### 1. **add-serialization-core** (Foundation)
-- **Priority**: 🔴 Critical (First)
-- **Why first**: All other components depend on serialization for task payloads and results
-- **Dependencies**: None
-- **Complexity**: Low - Simple protocol + cloudpickle implementation
-- **Key deliverables**: 
-  - `Serializer` protocol with `dumps` and `loads` methods
-  - `CloudpickleSerializer` implementation
-  - Integration points in TaskQueue and Worker constructors
-- **Estimated effort**: 2-3 days
+### 1) `2025-12-14-stabilize-v1-core` (foundation)
+**Why first**
+- Unblocks everything else by restoring importability and clarifying core semantics (notably `TaskQueue.get_result(..., timeout)` returns `None`).
+- Fixes baseline issues in `TaskQueue`, `SyncTaskQueue`, serializer, validation, and SQLite connection/transaction handling that can otherwise derail any follow-on work.
 
-### 2. **add-task-queue-core** (Core API)  
-- **Priority**: 🔴 Critical (Second)
-- **Why second**: Defines the primary user-facing API that other components build upon
-- **Dependencies**: `serialization-core` (for payload serialization)
-- **Complexity**: Medium - Core async queue logic + Result model
-- **Key deliverables**:
-  - `TaskQueue` class with async API (`enqueue`, `get_result`, `close`)
-  - `Result` data model with status, payload, error fields
-  - Backend interface for persistence
-  - ETA scheduling with `available_at` timestamps
-- **Estimated effort**: 3-4 days
+**Primary outputs**
+- Clean imports from source (no reliance on committed bytecode artifacts).
+- Stable, spec-aligned behavior for timeout and sync wrapper error handling.
 
-### 3. **add-backend-sqlite** (Persistence Layer)
-- **Priority**: 🟡 High (Third)
-- **Why third**: Provides the persistence backend that TaskQueue and Worker need
-- **Dependencies**: 
-  - `task-queue-core` (backend interface definition)
-  - `serialization-core` (payload storage format)
-- **Complexity**: Medium-High - SQLite schema, concurrent access, atomic operations
-- **Key deliverables**:
-  - `Backend` protocol defining async operations
-  - `SQLiteBackend` implementation with WAL mode
-  - Task table schema and atomic reservation behavior
-  - Multi-process safety considerations
-- **Estimated effort**: 4-5 days
+### 2) `2025-12-14-fix-worker-concurrency` (correctness + performance)
+**Why second**
+- Depends on a stable core import surface and baseline backend behavior.
+- Establishes correct bounded concurrency and reliable shutdown semantics, which improves both real usage and test determinism.
 
-### 4. **add-worker-core** (Task Execution)
-- **Priority**: 🟡 High (Fourth)
-- **Why fourth**: Completes the core system by adding task execution capability
-- **Dependencies**: 
-  - `task-queue-core` (uses TaskQueue concepts)
-  - `serialization-core` (serializes task execution)
-  - `backend-sqlite` (reserves and marks tasks)
-- **Complexity**: Medium - Async worker with concurrency control and graceful shutdown
-- **Key deliverables**:
-  - `Worker` class with `start` and `stop` methods
-  - Polling loop with backend reservation
-  - Concurrency control using `asyncio.Semaphore`
-  - Graceful shutdown handling
-  - Task lifecycle logging
-- **Estimated effort**: 3-4 days
+**Primary outputs**
+- Semaphore/dispatch logic that enforces `max_concurrency`.
+- Reliable task tracking so `stop()` waits for in-flight work.
 
-### 5. **add-sync-task-queue** (Convenience Wrapper)
-- **Priority**: 🟢 Medium (Last)
-- **Why last**: Pure convenience layer that wraps the already-implemented async core
-- **Dependencies**: `task-queue-core` (wraps the async TaskQueue)
-- **Complexity**: Low - Thin sync wrapper around async API
-- **Key deliverables**:
-  - `SyncTaskQueue` class as context manager
-  - Internal event loop management
-  - Delegation to async TaskQueue methods
-  - Usage documentation and examples
-- **Estimated effort**: 1-2 days
+### 3) `2025-12-14-test-suite-organization` (reduce friction)
+**Why third**
+- Moving/renaming tests tends to create merge conflicts; doing it after the main functional fixes reduces churn.
+- Once core behavior stabilizes, you can reorganize tests without repeatedly revisiting paths/import conventions.
 
-## Implementation Timeline
+**Primary outputs**
+- `tests/` layout (unit/integration vs performance).
+- Benchmarks opt-in (default `pytest` stays fast).
 
-| Week | Focus | Deliverables |
-|------|-------|--------------|
-| Week 1 | `add-serialization-core` | Serializer protocol, CloudpickleSerializer |
-| Week 2 | `add-task-queue-core` | TaskQueue API, Result model, backend interface |
-| Week 3 | `add-backend-sqlite` | SQLite backend implementation |
-| Week 4 | `add-worker-core` | Worker implementation with concurrency control |
-| Week 5 | `add-sync-task-queue` | Sync wrapper and final integration |
+### 4) `2025-12-14-align-docs-and-deps-v1` (user-facing alignment)
+**Why last**
+- Docs and examples should reflect the final stabilized API semantics and worker behavior.
+- Dependency trimming is safer once you’ve confirmed what v1 runtime code actually imports/needs.
 
-## Risk Mitigation
+**Primary outputs**
+- README/MkDocs aligned to v1 scope.
+- Runnable `examples/` “first success” script.
+- Reduced default dependencies; deferred backends moved to optional installs (if desired).
 
-### High-Risk Items
-1. **SQLite concurrency** - Test multi-process access early
-2. **Graceful shutdown** - Implement robust signal handling in Worker
-3. **Memory management** - Monitor serializer memory usage with large payloads
+## Parallelization Guidance
 
-### Integration Testing Strategy
-- After each proposal: Run integration tests with previously implemented components
-- After proposal 3: Test full enqueue → reserve → complete flow
-- After proposal 5: End-to-end testing of both async and sync APIs
+You *can* implement some of these in parallel, but expect merge conflicts if two efforts touch the same files.
 
-## Dependencies Graph
+### Safe(ish) parallel tracks (recommended)
+- After (1) is merged:
+  - Track A: implement (2) `fix-worker-concurrency`
+  - Track B: implement (4) `align-docs-and-deps-v1` **only for docs** (README/docs edits)
 
-```
-add-serialization-core (none)
-    ↓
-add-task-queue-core ← serialization-core
-    ↓
-add-backend-sqlite ← task-queue-core, serialization-core
-    ↓
-add-worker-core ← task-queue-core, serialization-core, backend-sqlite
-    ↓
-add-sync-task-queue ← task-queue-core
-```
+Rationale: worker concurrency changes mostly touch `src/sitq/worker.py`, while docs work mostly touches `README.md` and `docs/**`.
 
-## Success Criteria
+### Parallel tracks with higher conflict risk
+- (3) `test-suite-organization` in parallel with (1) or (2):
+  - likely conflicts because both phases typically modify tests, imports, and CI/pytest configuration.
 
-Each proposal is considered complete when:
-1. All tasks in `tasks.md` are checked off
-2. Unit tests pass with >90% coverage
-3. Integration tests work with dependent components
-4. Documentation is updated
-5. `openspec validate <change-id> --strict` passes
+If you want to parallelize this anyway, do it on a separate branch and merge it only once (1) and (2) are stable, then resolve conflicts once.
 
-## Notes
+## Validation Checkpoints (recommended)
 
-- This order assumes a single developer working full-time
-- Parallel development is possible after the first two proposals are complete
-- Each proposal should be validated and archived before starting the next
-- Consider creating feature branches for each proposal to enable parallel testing
+After each change-id is implemented:
+- Run `openspec validate <change-id> --strict`
+- Run the default pytest suite (fast path; exclude performance tests by default)
+- Run one end-to-end example (enqueue → worker → get_result) to confirm the user workflow

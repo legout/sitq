@@ -4,20 +4,22 @@ Backends provide persistent storage for tasks and results in sitq. The backend y
 
 ## Available Backends
 
-### SQLite Backend (Default)
+### SQLite Backend (Currently Available)
 
-SQLite is the default backend, perfect for most applications:
+SQLite is the currently implemented backend in sitq:
 
 ```python
-import sitq
+import asyncio
+from sitq import TaskQueue, Worker, SQLiteBackend
 
-# File-based SQLite (persistent)
-backend = sitq.SQLiteBackend("tasks.db")
-queue = sitq.TaskQueue(backend=backend)
-
-# In-memory SQLite (for testing)
-backend = sitq.SQLiteBackend(":memory:")
-queue = sitq.TaskQueue(backend=backend)
+async def main():
+    # File-based SQLite (persistent)
+    backend = SQLiteBackend("tasks.db")
+    queue = TaskQueue(backend=backend)
+    
+    # In-memory SQLite (for testing)
+    memory_backend = SQLiteBackend(":memory:")
+    memory_queue = TaskQueue(backend=memory_backend)
 ```
 
 **Pros:**
@@ -35,18 +37,20 @@ queue = sitq.TaskQueue(backend=backend)
 ### Basic Configuration
 
 ```python
-# Simple SQLite backend
-backend = sitq.SQLiteBackend("production.db")
+import asyncio
+from sitq import TaskQueue, SQLiteBackend
 
-# With custom settings
-backend = sitq.SQLiteBackend(
-    database="production.db",
-    connection_pool_size=10,
-    connection_timeout=30.0,
-    enable_wal=True,          # Enable Write-Ahead Logging
-    checkpoint_interval=1000  # Checkpoint interval for WAL
-)
+async def main():
+    # Simple SQLite backend
+    backend = SQLiteBackend("production.db")
+    queue = TaskQueue(backend=backend)
+    
+    # In-memory SQLite (for testing)
+    memory_backend = SQLiteBackend(":memory:")
+    memory_queue = TaskQueue(backend=memory_backend)
 ```
+
+**Note:** Advanced configuration options will be available in future releases as the backend implementation matures.
 
 ### Performance Optimization
 

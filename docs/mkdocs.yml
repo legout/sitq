@@ -103,6 +103,8 @@ nav:
       - web-app.md
       - data-processing.md
       - microservices.md
+  - Examples:
+    - Basic Usage: examples/basic/
   - API Reference:
     - core/
       - queue.md
