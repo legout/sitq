@@ -2,7 +2,7 @@
 name = "sitq"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
+readme = "dev_notes/README.md"
 authors = [
     { name = "Volker Lorrmann", email = "ligno.blades@gmail.com" }
 ]
