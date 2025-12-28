@@ -14,11 +14,11 @@
 
 ## 3. Cleanup
 
-- [ ] Convert "script-style tests" that return booleans / print output into proper pytest assertions.
+- [x] Convert "script-style tests" that return booleans / print output into proper pytest assertions.
 - [x] Ensure tests import `sitq` via consistent paths (prefer `import sitq` with `PYTHONPATH=src` in test config).
 
 ## 4. Validation
 
-- [ ] Run default pytest suite (unit+integration) and confirm it completes quickly.
-- [ ] Run performance tests explicitly and confirm they still work.
+- [x] Run default pytest suite (unit+integration) and confirm it completes quickly.
+- [x] Run performance tests explicitly and confirm they still work.
 

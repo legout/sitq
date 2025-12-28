@@ -5,9 +5,9 @@
 - [x] Ensure `TaskQueue.get_result(task_id, timeout)` returns `None` on timeout without raising/wrapping a timeout exception.
 - [x] Fix `SyncTaskQueue` so `__enter__` and `get_result` are proper class methods (not module-level functions).
 - [x] Ensure `SyncTaskQueue` uses sitq domain exceptions for operational failures (no bare `RuntimeError` for enqueue/get_result failures).
-- [ ] Ensure serializer can serialize/deserialize `None` results.
-- [ ] Fix SQLite backend transaction/connection scope issues that can leak or operate on closed connections (e.g. commits outside of `async with` connection scope).
-- [ ] Fix validation API inconsistencies that cause runtime failures (e.g. missing builder methods used in v1 codepaths, and missing `.validate()` calls that silently skip validation).
+- [x] Ensure serializer can serialize/deserialize `None` results.
+- [x] Fix SQLite backend transaction/connection scope issues that can leak or operate on closed connections (e.g. commits outside of `async with` connection scope).
+- [x] Fix validation API inconsistencies that cause runtime failures (e.g. missing builder methods used in v1 codepaths, and missing `.validate()` calls that silently skip validation).
 - [x] Add missing `error` column to SQLite `results` table schema.
 - [x] Add automatic migration for SQLite schema changes.
 - [x] Remove debug `print()` statements and replace with loguru logging.
