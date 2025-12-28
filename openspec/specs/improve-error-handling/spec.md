@@ -1,6 +1,10 @@
 # Specification: Improve Error Handling and Validation
 
-## ADDED Requirements
+## Purpose
+
+This specification defines comprehensive error handling, validation, and exception management for the sitq task queue system. It establishes a domain-specific exception hierarchy, input validation patterns, and consistent error reporting to improve reliability, debuggability, and user experience.
+
+## Requirements
 
 ### Requirement: Domain-specific exception hierarchy
 The sitq system SHALL define and use domain-specific exception types for better error handling.
@@ -104,8 +108,6 @@ The system SHALL handle errors gracefully and maintain stability.
 **AND** cleanup SHALL be performed to free resources
 **AND** system SHALL remain stable for other operations
 **AND** resource usage SHALL be documented and monitored
-
-## MODIFIED Requirements
 
 ### Requirement: Method error handling (from all existing proposals)
 All existing methods SHALL be updated with proper error handling and validation.
