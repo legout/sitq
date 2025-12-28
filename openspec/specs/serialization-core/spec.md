@@ -17,9 +17,10 @@ The system SHALL define an internal `Serializer` protocol for encoding and decod
 ### Requirement: Default cloudpickle serializer
 The system SHALL provide a default cloudpickle-based serializer implementation that conforms to the `Serializer` protocol.
 
-#### Scenario: Default serializer is used
-- **WHEN** a `TaskQueue` or `Worker` is constructed without an explicit serializer
-- **THEN** the system SHALL use the cloudpickle-based serializer for all task payload and result serialization
+#### Scenario: Serialize None result value
+- **WHEN** a task callable returns `None`
+- **THEN** the system SHALL serialize `None` as a valid result payload
+- **AND** `TaskQueue` / `Worker` SHALL be able to deserialize it back to `None`
 
 ### Requirement: Non-pluggable public API
 The system SHALL NOT expose a public plug-in mechanism for custom serializers in v1.

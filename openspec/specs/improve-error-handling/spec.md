@@ -3,9 +3,7 @@
 ## Purpose
 
 This specification defines comprehensive error handling, validation, and exception management for the sitq task queue system. It establishes a domain-specific exception hierarchy, input validation patterns, and consistent error reporting to improve reliability, debuggability, and user experience.
-
 ## Requirements
-
 ### Requirement: Domain-specific exception hierarchy
 The sitq system SHALL define and use domain-specific exception types for better error handling.
 
@@ -112,26 +110,9 @@ The system SHALL handle errors gracefully and maintain stability.
 ### Requirement: Method error handling (from all existing proposals)
 All existing methods SHALL be updated with proper error handling and validation.
 
-#### Scenario: TaskQueue error handling
-**GIVEN** TaskQueue methods (enqueue, get_result, close)
-**WHEN** errors occur during these operations
-**THEN** appropriate exceptions SHALL be raised and wrapped
-**AND** input validation SHALL occur before processing
-**AND** backend errors SHALL be handled gracefully
-**AND** error messages SHALL be clear and actionable
+#### Scenario: SyncTaskQueue wraps operational failures in domain exceptions
+- **GIVEN** `SyncTaskQueue.enqueue` or `SyncTaskQueue.get_result` delegates to the async core
+- **WHEN** an operational failure occurs (backend error, serialization error, timeout misconfiguration)
+- **THEN** the sync wrapper SHALL raise a sitq domain exception (a subclass of `SitqError`)
+- **AND** it SHALL preserve the original exception as the cause
 
-#### Scenario: Worker error handling
-**GIVEN** Worker methods (start, stop, task execution)
-**WHEN** errors occur during worker operations
-**THEN** worker lifecycle SHALL remain stable
-**AND** task execution errors SHALL be properly recorded
-**AND** graceful shutdown SHALL be maintained during errors
-**AND** retry logic SHALL be implemented for transient failures
-
-#### Scenario: Backend error handling
-**GIVEN** Backend methods (connect, enqueue, reserve, mark_success, etc.)
-**WHEN** database or connection errors occur
-**THEN** connection state SHALL be properly managed
-**AND** database errors SHALL be wrapped in backend exceptions
-**AND** retry logic SHALL be implemented for appropriate failures
-**AND** resource cleanup SHALL occur even during errors

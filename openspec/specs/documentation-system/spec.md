@@ -27,23 +27,11 @@ The system SHALL provide a professional documentation site using MkDocs with Mat
 ### Requirement: User Documentation Structure
 The system SHALL provide comprehensive user documentation organized by user journey and complexity.
 
-#### Scenario: Getting started experience
-- **WHEN** a new user wants to use sitq
-- **THEN** documentation SHALL provide clear installation instructions
-- **AND** SHALL include a 5-minute quickstart tutorial
-- **AND** SHALL explain basic concepts and terminology
-
-#### Scenario: Feature exploration
-- **WHEN** a user wants to understand specific features
-- **THEN** documentation SHALL provide detailed guides for TaskQueue, Worker, and backends
-- **AND** SHALL include practical examples and use cases
-- **AND** SHALL explain configuration options and trade-offs
-
-#### Scenario: Real-world examples
-- **WHEN** a user wants to implement sitq in their application
-- **THEN** documentation SHALL provide complete, runnable examples
-- **AND** SHALL cover common patterns like web apps, data processing, microservices
-- **AND** SHALL include best practices and troubleshooting tips
+#### Scenario: Getting started content matches the implemented v1 API
+- **WHEN** a new user follows the README or documentation quickstart
+- **THEN** all referenced APIs and classes SHALL exist in the v1 code under `src/sitq/`
+- **AND** the documented signatures SHALL match the implemented signatures
+- **AND** the “Getting Started” path SHALL link to at least one runnable `examples/` script for first success
 
 ### Requirement: Developer Documentation
 The system SHALL provide comprehensive documentation for contributors and advanced users.
@@ -74,4 +62,12 @@ The system SHALL provide automated documentation building and deployment.
 - **THEN** documentation SHALL support versioned documentation
 - **AND** SHALL provide clear upgrade and migration guides
 - **AND** SHALL maintain documentation for previous versions
+
+### Requirement: Documentation API Consistency
+Documentation code examples SHALL not reference APIs or features that are not implemented in `src/sitq`, unless explicitly labeled as future/roadmap content.
+
+#### Scenario: Reader encounters an example snippet
+- **WHEN** a user reads a code snippet in the documentation
+- **THEN** it SHALL be either runnable with the current version of sitq
+- **OR** clearly labeled as conceptual/future content if it depends on unimplemented features
 

@@ -6,14 +6,10 @@ TBD - created by archiving change add-sync-task-queue. Update Purpose after arch
 ### Requirement: SyncTaskQueue wrapper API
 The system SHALL provide a `SyncTaskQueue` wrapper that exposes a blocking interface over the async `TaskQueue`.
 
-#### Scenario: Use SyncTaskQueue as context manager
-- **WHEN** a caller uses `with SyncTaskQueue(...) as queue:` in synchronous code
-- **THEN** the wrapper SHALL create and manage any required async resources
-- **AND** the caller SHALL be able to call `queue.enqueue` and `queue.get_result` using blocking semantics
-
-#### Scenario: Delegate to async TaskQueue
-- **WHEN** `SyncTaskQueue.enqueue` or `SyncTaskQueue.get_result` is called
-- **THEN** the wrapper SHALL internally delegate to the corresponding async `TaskQueue` methods using an event loop it controls
+#### Scenario: SyncTaskQueue methods are available as instance methods
+- **WHEN** a caller constructs `SyncTaskQueue(...)`
+- **THEN** the instance SHALL expose `__enter__`, `__exit__`, `enqueue`, and `get_result` as callable instance methods
+- **AND** these methods SHALL delegate to the underlying async `TaskQueue` using an event loop owned by `SyncTaskQueue`
 
 ### Requirement: Event loop ownership and constraints
 The sync wrapper SHALL own its event loop and SHALL NOT require an existing loop.

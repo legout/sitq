@@ -6,19 +6,10 @@ TBD - created by archiving change add-task-queue-core. Update Purpose after arch
 ### Requirement: Async TaskQueue API
 The system SHALL provide an async-first `TaskQueue` API for enqueueing background tasks and retrieving their results.
 
-#### Scenario: Enqueue task with default settings
-- **WHEN** a caller invokes `TaskQueue.enqueue(func, *args, **kwargs)` without an `eta`
-- **THEN** the system SHALL create a new `task_id` and persist a pending task associated with that `task_id`
-- **AND** the task SHALL be eligible for execution as soon as a worker polls the backend
-
-#### Scenario: Get result with timeout
-- **WHEN** a caller invokes `TaskQueue.get_result(task_id, timeout)` and the task completes before `timeout` expires
-- **THEN** the system SHALL return a `Result` instance for that `task_id`
-- **AND** the `Result.status` SHALL be either `"success"` or `"failed"` depending on task execution
-
-#### Scenario: Get result not ready
+#### Scenario: Get result not ready returns None
 - **WHEN** a caller invokes `TaskQueue.get_result(task_id, timeout)` and the task is not complete before `timeout` expires
 - **THEN** the system SHALL return `None`
+- **AND** the system SHALL NOT raise a domain timeout exception to the caller for this case
 
 ### Requirement: Result model
 The system SHALL expose a `Result` data object describing the outcome of a task execution.
