@@ -20,6 +20,8 @@ from sqlalchemy import (
     Boolean,
     select,
     update,
+    MetaData,
+    text,
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection, AsyncEngine
 
@@ -41,8 +43,8 @@ class SQLiteBackend(Backend):
     # ------------------------------------------------------------------
     async def connect(self):
         """
-        Create the async engine and configure SQLite pragmas for cross-process use
-        (WAL mode and a reasonable busy timeout). We run the synchronous PRAGMA
+        Create an async engine and configure SQLite pragmas for cross-process use
+        (WAL mode and a reasonable busy timeout). We run synchronous PRAGMA
         statements via AsyncConnection.run_sync before creating tables.
         """
         self.engine = create_async_engine(self.db_path, echo=False, future=True)
@@ -51,6 +53,9 @@ class SQLiteBackend(Backend):
             # create tables if they don't exist.
             await conn.run_sync(self._configure_pragma)
             await conn.run_sync(self._create_tables)
+
+            # Ensure schema is up-to-date (migrations)
+            await self._ensure_schema(conn)
 
     def _configure_pragma(self, sync_conn):
         """
@@ -80,8 +85,9 @@ class SQLiteBackend(Backend):
 
     # ------------------------------------------------------------------
     def _create_tables(self, sync_conn):
-        # Diagnostic: log the actual type passed by AsyncConnection.run_sync
-        print(f"_create_tables arg type: {type(sync_conn)}")
+        from loguru import logger
+
+        logger.debug(f"_create_tables arg type: {type(sync_conn)}")
 
         # Build a fresh MetaData for the synchronous DDL operation
         metadata = sa.MetaData()
@@ -117,6 +123,7 @@ class SQLiteBackend(Backend):
             Column("task_id", String, sa.ForeignKey("tasks.id")),
             Column("status", String, nullable=False),
             Column("value", LargeBinary, nullable=True),
+            Column("error", String, nullable=True),
             Column("traceback", String, nullable=True),
             Column("retry_count", Integer, default=0),
             Column("last_retry_at", DateTime, nullable=True),
@@ -128,6 +135,41 @@ class SQLiteBackend(Backend):
         # keep references for later use
         self._tasks = tasks
         self._results = results
+
+    async def _ensure_schema(self, conn: AsyncConnection) -> None:
+        """Ensure database schema is up-to-date, running migrations if needed."""
+        from loguru import logger
+        from sqlalchemy import text
+
+        # Check if error column exists in results table using PRAGMA
+        try:
+            result = await conn.execute(text("PRAGMA table_info(results)"))
+            columns = [row[1] for row in result.fetchall()]
+            if "error" not in columns:
+                # Column doesn't exist, add it
+                logger.info("Migrating database: adding error column to results table")
+                await conn.execute(text("ALTER TABLE results ADD COLUMN error TEXT"))
+                logger.info("Migration complete: error column added")
+
+                # Recreate Table object to include error column
+                # This is needed for SQLAlchemy to recognize the new column
+                self._results = Table(
+                    "results",
+                    sa.MetaData(),
+                    Column("id", String, primary_key=True),
+                    Column("task_id", String, sa.ForeignKey("tasks.id")),
+                    Column("status", String, nullable=False),
+                    Column("value", LargeBinary, nullable=True),
+                    Column("error", String, nullable=True),
+                    Column("traceback", String, nullable=True),
+                    Column("retry_count", Integer, default=0),
+                    Column("last_retry_at", DateTime, nullable=True),
+                )
+                logger.debug("Recreated results Table definition with error column")
+            else:
+                logger.debug("Schema up-to-date: error column exists")
+        except Exception as e:
+            logger.warning(f"Error checking schema: {e}")
 
     # ------------------------------------------------------------------
     # Core operations
@@ -391,18 +433,40 @@ class SQLiteBackend(Backend):
         result_id = str(uuid.uuid4())
 
         async with self.engine.begin() as conn:
-            # Store failure result
-            await conn.execute(
-                self._results.insert().values(
-                    id=result_id,
-                    task_id=task_id,
-                    status="failed",
-                    value=None,
-                    error=error,
-                    traceback=traceback,
-                    retry_count=0,
+            # Check if error column exists in Table definition
+            # Use raw SQL if needed to avoid schema mismatch
+            has_error_col = any(col.name == "error" for col in self._results.columns)
+
+            if has_error_col:
+                # Use Table object (error column exists)
+                await conn.execute(
+                    self._results.insert().values(
+                        id=result_id,
+                        task_id=task_id,
+                        status="failed",
+                        value=None,
+                        error=error,
+                        traceback=traceback,
+                        retry_count=0,
+                    )
                 )
-            )
+            else:
+                # Use raw SQL (error column might exist but not in Table def)
+                await conn.execute(
+                    text(
+                        "INSERT INTO results (id, task_id, status, value, error, traceback, retry_count) "
+                        "VALUES (:id, :task_id, :status, :value, :error, :traceback, :retry_count)"
+                    ),
+                    {
+                        "id": result_id,
+                        "task_id": task_id,
+                        "status": "failed",
+                        "value": None,
+                        "error": error,
+                        "traceback": traceback,
+                        "retry_count": 0,
+                    },
+                )
 
             # Update task to reference result
             await conn.execute(

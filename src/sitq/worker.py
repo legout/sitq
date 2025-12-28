@@ -175,13 +175,9 @@ class Worker:
                 if reserved_tasks:
                     logger.debug("Reserved %d tasks for execution", len(reserved_tasks))
 
-                    # Execute each reserved task
+                    # Execute each reserved task (dispatches with semaphore protection)
                     for reserved_task in reserved_tasks:
-                        task_coro = self._execute_task(reserved_task)
-                        wrapped_task = self._track_task(task_coro)
-
-                        # Start task execution with semaphore limiting
-                        asyncio.create_task(self._execute_with_semaphore(wrapped_task))
+                        self._dispatch_task(reserved_task)
                 else:
                     # No tasks available, wait for poll interval
                     logger.debug(
@@ -194,13 +190,26 @@ class Worker:
                 # Wait a bit before retrying
                 await asyncio.sleep(min(self.poll_interval, 1.0))
 
-    async def _execute_with_semaphore(self, task_coro: asyncio.Task) -> None:
-        """Execute task with semaphore limiting."""
-        async with self._semaphore:
-            if self._shutdown_event.is_set():
-                logger.debug("Shutdown detected, skipping task execution")
-                return
-            await task_coro
+    def _dispatch_task(self, reserved_task: ReservedTask) -> None:
+        """Dispatch a reserved task with semaphore protection and tracking.
+
+        This method acquires a concurrency permit BEFORE creating/starting the task,
+        ensuring bounded concurrency. The task is tracked so stop() can wait for it.
+
+        Args:
+            reserved_task: The reserved task from the backend.
+        """
+
+        async def _run_with_semaphore():
+            async with self._semaphore:
+                if self._shutdown_event.is_set():
+                    logger.debug("Shutdown detected, skipping task execution")
+                    return
+                await self._execute_task(reserved_task)
+
+        task = asyncio.create_task(_run_with_semaphore())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     async def _execute_task(self, reserved_task: ReservedTask) -> None:
         """Execute a single reserved task."""
@@ -276,6 +285,9 @@ class Worker:
                     "Failed to record task failure: %s", backend_error, exc_info=True
                 )
 
+            # Log the failure before raising
+            logger.error("Task %s failed: %s", task_id, error_msg, exc_info=True)
+
             # Raise domain-specific exception
             if isinstance(e, (ValidationError, SerializationError)):
                 raise TaskExecutionError(
@@ -291,8 +303,6 @@ class Worker:
                     function_name=function_name,
                     cause=e,
                 ) from e
-
-            logger.error("Task %s failed: %s", task_id, error_msg, exc_info=True)
 
     def _track_task(self, coro) -> asyncio.Task:
         """Track a task and remove it from the set when done."""

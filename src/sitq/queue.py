@@ -183,7 +183,7 @@ class TaskQueue:
                 if result:
                     return result
 
-                if timeout and (_now() - start).total_seconds() > timeout:
+                if timeout is not None and (_now() - start).total_seconds() > timeout:
                     return None
 
                 await asyncio.sleep(0.5)

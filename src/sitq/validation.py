@@ -12,6 +12,7 @@ import functools
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional, TypeVar, Union, get_type_hints
 
+from loguru import logger
 from .exceptions import ValidationError
 
 
@@ -445,8 +446,8 @@ def retry_async(
                     # Ensure delay is non-negative
                     delay = max(0, delay)
 
-                    # Log retry attempt (would use proper logging in real implementation)
-                    print(
+                    # Log retry attempt
+                    logger.warning(
                         f"Retry {attempt + 1}/{max_attempts} after {delay:.2f}s for {func.__name__}: {e}"
                     )
 
@@ -525,7 +526,7 @@ def retry_sync(
                     delay = max(0, delay)
 
                     # Log retry attempt
-                    print(
+                    logger.warning(
                         f"Retry {attempt + 1}/{max_attempts} after {delay:.2f}s for {func.__name__}: {e}"
                     )
 

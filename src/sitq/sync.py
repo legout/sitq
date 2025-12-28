@@ -100,14 +100,16 @@ class SyncTaskQueue:
 
         # Check if we're already in an event loop
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
+        except RuntimeError as e:
+            # No running loop, which is what we want
+            pass
+        else:
+            # Loop is running - this is an error
             raise RuntimeError(
                 "SyncTaskQueue cannot be used inside an existing event loop. "
                 "Use TaskQueue directly in async contexts."
             )
-        except RuntimeError:
-            # No running loop, which is what we want
-            pass
 
         # Create and start event loop in a separate thread
         self._loop = asyncio.new_event_loop()
