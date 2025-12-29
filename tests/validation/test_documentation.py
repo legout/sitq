@@ -85,14 +85,14 @@ def test_docstring_presence():
 
 
 def test_cross_references():
-    """Test if cross-references exist in documentation."""
+    """Test if cross-references exist in documentation (agnostic to file paths)."""
     docs_dir = Path("docs")
 
     if not docs_dir.exists():
         print("❌ Documentation directory not found")
         return False
 
-    # Check for cross-reference patterns in key files
+    # Check for cross-reference patterns (agnostic to which file they're in)
     cross_ref_patterns = [
         "[`TaskQueue`]",
         "[`Worker`]",
@@ -166,19 +166,36 @@ def test_example_syntax():
 
 
 def test_documentation_structure():
-    """Test if documentation has proper structure."""
+    """Test if documentation has proper structure following Diátaxis layout."""
     required_files = [
         "docs/index.md",
-        "docs/installation.md",
-        "docs/quickstart.md",
-        "docs/basic-concepts.md",
-        "docs/user-guide/task-queues.md",
-        "docs/user-guide/workers.md",
-        "docs/user-guide/backends.md",
-        "docs/user-guide/examples/web-app.md",
-        "docs/user-guide/contributing.md",
-        "docs/user-guide/troubleshooting.md",
-        "docs/interactive-tutorial.ipynb",
+        "docs/explanation/architecture.md",
+        "docs/explanation/limitations.md",
+        "docs/explanation/serialization.md",
+        "docs/how-to/installation.md",
+        "docs/how-to/deployment.md",
+        "docs/how-to/error-handling.md",
+        "docs/how-to/get-results.md",
+        "docs/how-to/handle-failures.md",
+        "docs/how-to/performance.md",
+        "docs/how-to/run-worker.md",
+        "docs/how-to/serialization.md",
+        "docs/how-to/sqlite-backend.md",
+        "docs/how-to/sync-wrapper.md",
+        "docs/how-to/testing.md",
+        "docs/how-to/troubleshooting.md",
+        "docs/how-to/workers.md",
+        "docs/how-to/contributing.md",
+        "docs/tutorials/index.md",
+        "docs/tutorials/quickstart.md",
+        "docs/tutorials/basic-concepts.md",
+        "docs/tutorials/concurrency.md",
+        "docs/tutorials/delayed-execution.md",
+        "docs/tutorials/failures.md",
+        "docs/tutorials/interactive-tutorial.ipynb",
+        "docs/reference/ERROR_HANDLING.md",
+        "docs/reference/changelog.md",
+        "docs/reference/api/sitq.md",
     ]
 
     missing_files = []
