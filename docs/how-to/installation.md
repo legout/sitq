@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.13 or higher
 - Operating system: Windows, macOS, or Linux
 
 ## Install from PyPI
@@ -14,7 +14,7 @@ pip install sitq
 ## Install from Source
 
 ```bash
-git clone https://github.com/username/sitq.git
+git clone https://github.com/legout/sitq.git
 cd sitq
 pip install -e .
 ```
@@ -24,10 +24,40 @@ pip install -e .
 For development with all optional dependencies:
 
 ```bash
-git clone https://github.com/username/sitq.git
+git clone https://github.com/legout/sitq.git
 cd sitq
 pip install -e ".[dev]"
 ```
+
+## Supported Install Methods
+
+### Standard Installation
+
+The standard installation includes all core dependencies:
+
+- `sqlalchemy>=2.0` - Database abstraction layer
+- `aiosqlite>=0.19` - Async SQLite support
+- `cloudpickle>=3.0` - Task and result serialization
+- `loguru>=0.7` - Logging
+
+```bash
+pip install sitq
+```
+
+### Development Installation
+
+Development installation includes testing and development tools:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Development dependencies include:
+- `pytest>=9.0.1` - Testing framework
+- `pytest-asyncio>=1.3.0` - Async testing support
+- `ruff>=0.12.8` - Linting and formatting
+- `ipython>=9.4.0` - Enhanced Python REPL
+- `marimo>=0.14.16` - Notebook support
 
 ## Verify Installation
 
@@ -36,32 +66,12 @@ import sitq
 print(f"sitq version: {sitq.__version__}")
 ```
 
-## Optional Dependencies
+## Backend-Specific Dependencies
 
-Depending on your use case, you may want to install additional packages:
-
-```bash
-# For SQLite backend (default)
-pip install sitq
-
-# For enhanced performance
-pip install sitq[performance]
-
-# For development tools
-pip install sitq[dev]
-
-# Install everything
-pip install sitq[all]
-```
-
-## Docker Installation
-
-```bash
-docker pull sitq/sitq:latest
-```
+The SQLite backend is included in the standard installation. No additional dependencies are required for the current implementation.
 
 ## Next Steps
 
 - [Quickstart Guide](../tutorials/quickstart.md) - Get up and running in 5 minutes
-- [Basic Concepts](../tutorials/basic-concepts.md) - Understand the core architecture
+- [API Reference](../reference/api/) - Complete API documentation
 - [How-to Guides](../how-to/) - Explore all features
