@@ -92,24 +92,25 @@ nav:
     - Interactive Tutorial: tutorials/interactive-tutorial.ipynb
   - How-to Guides:
     - Installation: how-to/installation.md
-    - Core Concepts:
-      - how-to/task-queues.md
-      - how-to/workers.md
-      - how-to/backends.md
-      - how-to/serialization.md
-      - how-to/sync-wrapper.md
-      - how-to/error-handling.md
-    - Examples:
-      - how-to/examples/web-app.md
-      - how-to/examples/data-processing.md
-      - how-to/examples/microservices.md
+    - Core Operations:
+      - Running Workers: how-to/run-worker.md
+      - Getting Results: how-to/get-results.md
+      - Handling Failures: how-to/handle-failures.md
+      - SQLite Backend: how-to/sqlite-backend.md
+      - Troubleshooting: how-to/troubleshooting.md
     - Development:
       - how-to/contributing.md
       - how-to/testing.md
       - how-to/performance.md
-    - Operations:
-      - how-to/deployment.md
-      - how-to/troubleshooting.md
+    - Reference:
+      - API Documentation:
+        - reference/api/
+      - Error Handling: reference/ERROR_HANDLING.md
+      - Changelog: reference/changelog.md
+    - Explanation:
+      - Architecture: explanation/architecture.md
+      - Serialization: explanation/serialization.md
+      - Limitations: explanation/limitations.md
   - Reference:
     - API Documentation:
       - reference/api/
