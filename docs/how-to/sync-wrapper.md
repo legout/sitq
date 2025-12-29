@@ -368,7 +368,5 @@ def advanced_process(data):
 
 ## Next Steps
 
-- [Task Queues Guide](task-queues.md) - Learn about advanced queue management
 - [Workers Guide](workers.md) - Explore worker configuration
-- [Examples](../examples/) - Real-world usage patterns
 - [API Reference](../reference/api/) - Detailed API documentation

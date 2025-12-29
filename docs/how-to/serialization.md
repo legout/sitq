@@ -425,7 +425,4 @@ for obj in test_objects:
 
 ## Next Steps
 
-- [Task Queues Guide](task-queues.md) - Learn about queue management
-- [Backends Guide](backends.md) - Explore storage options
 - [Error Handling Guide](error-handling.md) - Comprehensive error management
-- [Examples](../examples/) - Real-world serialization patterns

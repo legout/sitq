@@ -335,15 +335,12 @@ worker = sitq.Worker(
 
 ## Next Steps
 
-- [Task Queues Guide](task-queues.md) - Learn about queue management
-- [Backends Guide](backends.md) - Explore storage options
 - [Error Handling Guide](error-handling.md) - Comprehensive error management
-- [Examples](../examples/) - Real-world worker patterns
+- [`TaskQueue`](../reference/api/queue.md) - For enqueuing tasks to be processed by workers
 
 ## See Also
 
 - [`TaskQueue`](../reference/api/queue.md) - For enqueuing tasks to be processed by workers
-- [`SQLiteBackend`](../reference/api/backends/sqlite.md) - For SQLite-based task persistence
 - [`SyncTaskQueue`](../reference/api/sync.md) - For synchronous task processing
 - [`Task`](../reference/api/core.md) - For task data structure
 - [`Result`](../reference/api/core.md) - For task result handling

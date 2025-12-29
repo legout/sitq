@@ -258,7 +258,6 @@ conn.close()
 ## What's Next?
 
 - [Running Workers](run-worker.md) - Worker configuration
-- [Task Queues](task-queues.md) - Queue management
 - [Backend Reference](../reference/api/sitq.backends.sqlite.md) - API documentation
 
 ## See Also

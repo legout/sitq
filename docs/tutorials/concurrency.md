@@ -160,5 +160,4 @@ await cpu_worker.start()
 ## See Also
 
 - [`Worker`](../reference/api/sitq.worker.md) - Worker initialization and configuration
-- [Task Queues](../how-to/task-queues.md) - Queue management
 - [Performance](../how-to/performance.md) - Performance optimization

@@ -128,22 +128,7 @@ except sitq.BackendTimeoutError:
     print("Backend operation timed out")
 ```
 
-### Queue Health Monitoring
 
-```python
-# Check queue health
-health = queue.health_check()
-if not health.is_healthy:
-    print(f"Queue unhealthy: {health.error_message}")
-    print(f"Backend status: {health.backend_status}")
-    print(f"Queue size: {health.queue_size}")
-
-# Monitor queue metrics
-metrics = queue.get_metrics()
-print(f"Success rate: {metrics.success_rate:.2%}")
-print(f"Error rate: {metrics.error_rate:.2%}")
-print(f"Average wait time: {metrics.avg_wait_time}s")
-```
 
 ## Worker Error Handling
 
@@ -249,35 +234,7 @@ queue = sitq.TaskQueue(backend=backend)
 
 ### Backend Health Monitoring
 
-```python
-def monitor_backend_health(backend, interval=60):
-    """Monitor backend health periodically."""
-    while True:
-        try:
-            health = backend.health_check()
-            if not health.is_healthy:
-                print(f"⚠️ Backend unhealthy: {health.error_message}")
-                send_alert(f"Backend health issue: {health.error_message}")
-            
-            # Log metrics
-            metrics = backend.get_metrics()
-            print(f"Backend metrics: {metrics}")
-            
-        except Exception as e:
-            print(f"Health monitoring error: {e}")
-            send_alert(f"Health monitoring failed: {e}")
-        
-        time.sleep(interval)
 
-# Start health monitoring (in background thread)
-import threading
-monitor_thread = threading.Thread(
-    target=monitor_backend_health,
-    args=(backend,),
-    daemon=True
-)
-monitor_thread.start()
-```
 
 ## Global Error Handling
 
@@ -436,7 +393,4 @@ test_error_scenarios()
 
 ## Next Steps
 
-- [Task Queues Guide](task-queues.md) - Learn about queue management
-- [Workers Guide](workers.md) - Explore task execution
-- [Backends Guide](backends.md) - Understand storage options
-- [Examples](../examples/) - Real-world error handling patterns
+ - [Workers Guide](workers.md) - Explore task execution
