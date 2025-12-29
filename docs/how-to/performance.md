@@ -1301,4 +1301,4 @@ if __name__ == "__main__":
 
 - [Contributing Guide](contributing.md) - Learn how to contribute
 - [Testing Guide](testing.md) - Understand testing strategy
-- [API Reference](../reference/api/) - Detailed API documentation
+- [API Reference](../reference/api/sitq.md) - Detailed API documentation

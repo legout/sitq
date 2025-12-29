@@ -460,9 +460,9 @@ We value all types of contributions:
 
 ### Documentation
 
-- [API Reference](../reference/api/)
-- [User Guide](../how-to/)
-- [Examples](../examples/)
+- [API Reference](../reference/api/sitq.md)
+- [User Guide](../how-to/installation.md)
+- [Examples](https://github.com/legout/sitq/tree/main/examples/)
 
 ### Tools and Libraries
 
@@ -492,4 +492,4 @@ Thank you for contributing to sitq! Your contributions help make the project bet
 
 - [Testing Guide](testing.md) - Learn about testing strategy
 - [Performance Guide](performance.md) - Performance optimization
-- [API Reference](../reference/api/) - Detailed API documentation
+- [API Reference](../reference/api/sitq.md) - Detailed API documentation

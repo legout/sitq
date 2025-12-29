@@ -169,5 +169,5 @@ Consider alternatives for:
 
 - [Installation](../how-to/installation.md) - Set up sitq
 - [Quickstart](quickstart.md) - Try a basic example
-- [How-to Guides](../how-to/) - Explore advanced features
-- [API Reference](../reference/api/) - Detailed API documentation
+- [How-to Guides](../how-to/installation.md) - Explore advanced features
+- [API Reference](../reference/api/sitq.md) - Detailed API documentation

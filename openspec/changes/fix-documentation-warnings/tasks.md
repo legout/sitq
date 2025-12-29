@@ -37,3 +37,15 @@
 - [x] 6.2 Document that all 19 orphaned files are now in nav - Verified: 0 orphaned files remain
 - [x] 6.3 Confirm no broken links remain in documentation - Verified: 0 broken link warnings
 - [x] 6.4 Run `openspec validate fix-documentation-warnings --strict`
+
+## 7. Notes on Remaining INFO Messages
+- [x] 7.1 Fixed high-priority directory links in docs/index.md, docs/explanation/architecture.md, docs/explanation/limitations.md
+- [x] 7.2 Fixed external openspec/specs/ link to use absolute GitHub URL
+- [x] 7.3 Document that 15 remaining INFO messages about "unrecognized relative link" are intentional
+- These messages refer to broad category links in "See Also" and "Documentation" sections:
+  - `[API Reference](../reference/api/)` - Links to entire API section
+  - `[How-to Guides](../how-to/)` - Links to entire how-to section
+  - `[Examples](../examples/)` - Links to examples directory
+- These links work correctly and provide useful section-level navigation
+- INFO messages are informational, not errors or warnings
+- Decision: Left as-is for better user navigation flexibility

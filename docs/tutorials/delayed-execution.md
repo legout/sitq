@@ -14,7 +14,7 @@ This example demonstrates:
 3. Observing that tasks execute only after their ETA
 4. Retrieving results from delayed tasks
 
-View the full example at [`examples/basic/02_eta_delayed_execution.py`](/examples/basic/02_eta_delayed_execution.py)
+View the full example at [`examples/basic/02_eta_delayed_execution.py`](https://github.com/legout/sitq/tree/main/examples/basic/02_eta_delayed_execution.py)
 
 ## Scheduling Tasks with ETA
 

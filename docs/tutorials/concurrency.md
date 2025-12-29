@@ -14,7 +14,7 @@ This example demonstrates:
 3. Verifying that tasks execute in parallel up to the limit
 4. Understanding resource management with controlled parallelism
 
-View the full example at [`examples/basic/03_bounded_concurrency.py`](/examples/basic/03_bounded_concurrency.py)
+View the full example at [`examples/basic/03_bounded_concurrency.py`](https://github.com/legout/sitq/tree/main/examples/basic/03_bounded_concurrency.py)
 
 ## Setting Concurrency Limits
 

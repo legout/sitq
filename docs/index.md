@@ -68,7 +68,7 @@ Understand the design decisions and architecture behind sitq.
 
 ## Runnable Examples
 
-The [`examples/basic/`](/examples/basic/) directory contains complete, runnable scripts demonstrating all core features:
+The [`examples/basic/`](https://github.com/legout/sitq/tree/main/examples/basic/) directory contains complete, runnable scripts demonstrating all core features:
 
 ```bash
 # End-to-end workflow

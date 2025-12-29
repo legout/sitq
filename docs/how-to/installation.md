@@ -73,5 +73,5 @@ The SQLite backend is included in the standard installation. No additional depen
 ## Next Steps
 
 - [Quickstart Guide](../tutorials/quickstart.md) - Get up and running in 5 minutes
-- [API Reference](../reference/api/) - Complete API documentation
-- [How-to Guides](../how-to/) - Explore all features
+- [API Reference](../reference/api/sitq.md) - Complete API documentation
+- [How-to Guides](../how-to/installation.md) - Explore all features
