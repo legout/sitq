@@ -53,11 +53,14 @@ def main():
     print("🚀 sitq Examples Validation")
     print("=" * 50)
 
-    examples_dir = os.path.join(os.path.dirname(__file__), "examples", "basic")
+    examples_dir = os.path.join(os.path.dirname(__file__), "..", "examples", "basic")
 
     examples = [
-        ("api_demo.py", "API Structure Demo"),
-        ("quickstart_simple.py", "Basic Usage Pattern"),
+        ("01_end_to_end.py", "End-to-end workflow"),
+        ("02_eta_delayed_execution.py", "Delayed execution with ETA"),
+        ("03_bounded_concurrency.py", "Bounded concurrency control"),
+        ("04_failures_and_tracebacks.py", "Failure handling and tracebacks"),
+        ("05_sync_client_with_worker.py", "Sync client with async worker"),
     ]
 
     all_passed = True
@@ -76,6 +79,7 @@ def main():
         print("\n✅ sitq examples are working correctly")
         print("✅ Users can run examples from examples/basic/ directory")
         print("✅ API structure and imports are functional")
+        print("✅ All examples complete within 30 seconds")
         return 0
     else:
         print("❌ SOME EXAMPLES FAILED!")

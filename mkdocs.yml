@@ -1,0 +1,127 @@
+site_name: sitq Documentation
+site_description: Simple Task Queue for Python
+site_author: sitq Contributors
+site_url: https://github.com/legout/sitq
+
+# Repository
+repo_name: sitq
+repo_url: https://github.com/legout/sitq
+edit_uri: edit/main
+
+# Copyright
+copyright: Copyright (c) 2025 sitq Contributors
+
+# Configuration
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+# Plugins
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            merge_init_into_class: true
+            show_root_members_full_path: false
+            show_submodules: false
+            show_inherited_members: true
+            show_object_full_path: false
+            show_if_no_docstring: true
+            group_by_submodule: false
+  - mkdocs-jupyter:
+      kernel_name: python3
+  - awesome-pages
+
+# Markdown Extensions
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - footnotes
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+      title: Contents
+
+# Navigation
+nav:
+  - Home: tutorials/index.md
+  - Tutorials:
+    - Getting Started:
+      - tutorials/quickstart.md
+      - tutorials/basic-concepts.md
+    - Interactive Tutorial: tutorials/interactive-tutorial.ipynb
+  - How-to Guides:
+    - Installation: how-to/installation.md
+    - Core Concepts:
+      - how-to/task-queues.md
+      - how-to/workers.md
+      - how-to/backends.md
+      - how-to/serialization.md
+      - how-to/sync-wrapper.md
+      - how-to/error-handling.md
+    - Examples:
+      - how-to/examples/web-app.md
+      - how-to/examples/data-processing.md
+      - how-to/examples/microservices.md
+    - Development:
+      - how-to/contributing.md
+      - how-to/testing.md
+      - how-to/performance.md
+    - Operations:
+      - how-to/deployment.md
+      - how-to/troubleshooting.md
+  - Reference:
+    - API Documentation:
+      - reference/api/
+    - Error Handling: reference/ERROR_HANDLING.md
+    - Changelog: reference/changelog.md
+  - Explanation:
+    - Architecture: explanation/architecture.md
+
+# Documentation Structure
+docs_dir: docs
+site_dir: site
+exclude_docs: site
+
+# Build Configuration
+use_directory_urls: false

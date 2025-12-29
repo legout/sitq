@@ -4,6 +4,14 @@ This document defines the recommended implementation order for the **active** Op
 
 ## Active Changes
 
+### Documentation Refactor (Diataxis)
+1. `refactor-docs-diataxis-ia`
+2. `revise-docs-portal-tutorials-howto-explanation-reference`
+3. `remove-obsolete-docs`
+4. `update-docs-validation-tests`
+
+### v1 Core Refactor (Archived)
+*The following changes are archived as completed in `openspec/changes/archive/`*:
 1. `2025-12-14-stabilize-v1-core`
 2. `2025-12-14-fix-worker-concurrency`
 3. `2025-12-14-test-suite-organization`
@@ -11,7 +19,56 @@ This document defines the recommended implementation order for the **active** Op
 
 ## Recommended Order
 
-### 1) `2025-12-14-stabilize-v1-core` (foundation)
+### Documentation Refactor Order
+
+#### 1) `refactor-docs-diataxis-ia` (foundation)
+**Why first**
+- Establishes the new Diataxis directory structure (`tutorials/`, `how-to/`, `reference/`, `explanation/`)
+- Fixes MkDocs navigation to prevent missing file errors
+- Enables all subsequent documentation work to have a clear home
+
+**Primary outputs**
+- Diataxis directory layout under `docs/`
+- Updated `docs/mkdocs.yml` with correct `nav:` and repo metadata
+- Removal of `git-committers` plugin
+
+#### 2) `revise-docs-portal-tutorials-howto-explanation-reference` (content)
+**Why second**
+- Depends on the structure from step 1
+- Provides the actual content for the new IA (portal, tutorials, how-to, explanation, reference)
+- Aligns installation docs with `pyproject.toml` (Python >= 3.13)
+
+**Primary outputs**
+- Rewritten `docs/index.md` as a Diataxis portal
+- Accurate `docs/installation.md`
+- Tutorials including rewritten `docs/tutorials/interactive-tutorial.ipynb`
+- How-to guides, explanation pages, and mkdocstrings API reference stubs
+
+#### 3) `remove-obsolete-docs` (cleanup)
+**Why third**
+- Must wait until replacements from step 2 exist
+- Removes legacy content that references unimplemented APIs
+- Cleans up nav to prevent dead links
+
+**Primary outputs**
+- Deleted `docs/user-guide/` pages and other obsolete content
+- Clean `docs/mkdocs.yml` nav with no broken links
+- Documentation with no "future work" or speculative sections
+
+#### 4) `update-docs-validation-tests` (validation)
+**Why last**
+- Tests should validate the final Diataxis structure
+- Ensures notebook location and snippet syntax checking align with new docs
+- Safe to update after all other docs work is stable
+
+**Primary outputs**
+- Updated `tests/validation/test_documentation.py` for Diataxis layout
+- Retained/enhanced code block syntax validation
+- Assertions for `docs/tutorials/interactive-tutorial.ipynb` existence
+
+### v1 Core Refactor Order (Archived)
+
+#### 1) `2025-12-14-stabilize-v1-core` (foundation)
 **Why first**
 - Unblocks everything else by restoring importability and clarifying core semantics (notably `TaskQueue.get_result(..., timeout)` returns `None`).
 - Fixes baseline issues in `TaskQueue`, `SyncTaskQueue`, serializer, validation, and SQLite connection/transaction handling that can otherwise derail any follow-on work.
@@ -50,23 +107,40 @@ This document defines the recommended implementation order for the **active** Op
 
 ## Parallelization Guidance
 
-You *can* implement some of these in parallel, but expect merge conflicts if two efforts touch the same files.
+### Documentation Refactor Parallelization
+**Sequential is recommended** due to tight dependencies:
+- `refactor-docs-diataxis-ia` (1) must be complete before content can be added
+- `revise-docs-portal-tutorials-howto-explanation-reference` (2) must be complete before obsolete docs can be removed
+- `remove-obsolete-docs` (3) and `update-docs-validation-tests` (4) could be done in parallel after step 2, but this is low value
+
+### v1 Core Refactor Parallelization (Archived)
+
+You *could* implement some of these in parallel, but expect merge conflicts if two efforts touch the same files.
 
 ### Safe(ish) parallel tracks (recommended)
 - After (1) is merged:
-  - Track A: implement (2) `fix-worker-concurrency`
-  - Track B: implement (4) `align-docs-and-deps-v1` **only for docs** (README/docs edits)
+   - Track A: implement (2) `fix-worker-concurrency`
+   - Track B: implement (4) `align-docs-and-deps-v1` **only for docs** (README/docs edits)
 
 Rationale: worker concurrency changes mostly touch `src/sitq/worker.py`, while docs work mostly touches `README.md` and `docs/**`.
 
 ### Parallel tracks with higher conflict risk
 - (3) `test-suite-organization` in parallel with (1) or (2):
-  - likely conflicts because both phases typically modify tests, imports, and CI/pytest configuration.
+   - likely conflicts because both phases typically modify tests, imports, and CI/pytest configuration.
 
 If you want to parallelize this anyway, do it on a separate branch and merge it only once (1) and (2) are stable, then resolve conflicts once.
 
 ## Validation Checkpoints (recommended)
 
+### Documentation Refactor Checkpoints
+After each documentation change-id is implemented:
+- Run `openspec validate <change-id> --strict`
+- Run `mkdocs build` to ensure navigation and links work
+- For steps 2-4, spot-check that portal/tutorial/how-to/explanation/reference sections are present and link correctly
+- After step 3, verify no "future work" or speculative content remains
+- After step 4, run `pytest tests/validation/` to confirm updated tests pass
+
+### v1 Core Refactor Checkpoints (Archived)
 After each change-id is implemented:
 - Run `openspec validate <change-id> --strict`
 - Run the default pytest suite (fast path; exclude performance tests by default)
