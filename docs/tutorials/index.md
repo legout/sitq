@@ -23,7 +23,7 @@ See [examples/README.md](examples/README.md) for all examples and learning path.
 Basic usage:
 ```python
 import asyncio
-from sitq import TaskQueue, SQLiteBackend
+from sitq import TaskQueue, Worker, SQLiteBackend
 
 async def main():
     # Set up queue and worker
@@ -45,7 +45,9 @@ async def main():
     
     # Get result
     result = await queue.get_result(task_id)
-    print(f"Result: {result.value}")
+    if result and result.status == "success":
+        value = queue.deserialize_result(result)
+        print(f"Result: {value}")
 
 if __name__ == "__main__":
     asyncio.run(main())

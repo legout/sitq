@@ -276,4 +276,4 @@ backend = SQLiteBackend(":memory:")
 ## See Also
 
 - [`Worker`](../reference/api/sitq.worker.md) - Worker API reference
-- [Error Handling](error-handling.md) - Comprehensive error management
+- [Error Handling](../reference/ERROR_HANDLING.md) - Comprehensive error management

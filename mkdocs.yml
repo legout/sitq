@@ -102,14 +102,6 @@ nav:
         - Contributing: how-to/contributing.md
         - Testing: how-to/testing.md
         - Performance: how-to/performance.md
-      - Reference:
-        - API Documentation: reference/api/
-        - Error Handling: reference/ERROR_HANDLING.md
-        - Changelog: reference/changelog.md
-      - Explanation:
-        - Architecture: explanation/architecture.md
-        - Serialization: explanation/serialization.md
-        - Limitations: explanation/limitations.md
   - Reference:
       - API Documentation:
         - reference/api/
@@ -117,6 +109,8 @@ nav:
       - Changelog: reference/changelog.md
   - Explanation:
       - Architecture: explanation/architecture.md
+      - Serialization: explanation/serialization.md
+      - Limitations: explanation/limitations.md
 
 # Documentation Structure
 docs_dir: docs
