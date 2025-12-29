@@ -79,38 +79,39 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - toc:
-      permalink: true
-      title: Contents
-
-# Navigation
-nav:
-  - Home: tutorials/index.md
-  - Tutorials:
-    - Getting Started:
-      - tutorials/quickstart.md
-      - tutorials/basic-concepts.md
-    - Interactive Tutorial: tutorials/interactive-tutorial.ipynb
-  - How-to Guides:
-    - Installation: how-to/installation.md
-    - Core Operations:
-      - Running Workers: how-to/run-worker.md
-      - Getting Results: how-to/get-results.md
-      - Handling Failures: how-to/handle-failures.md
-      - SQLite Backend: how-to/sqlite-backend.md
-      - Troubleshooting: how-to/troubleshooting.md
-    - Development:
-      - how-to/contributing.md
-      - how-to/testing.md
-      - how-to/performance.md
-    - Reference:
-      - API Documentation:
-        - reference/api/
-      - Error Handling: reference/ERROR_HANDLING.md
-      - Changelog: reference/changelog.md
-    - Explanation:
-      - Architecture: explanation/architecture.md
-      - Serialization: explanation/serialization.md
-      - Limitations: explanation/limitations.md
+       permalink: true
+       title: Contents
+ 
+ # Navigation
+ nav:
+   - Home: tutorials/index.md
+   - Tutorials:
+     - Getting Started:
+       - tutorials/quickstart.md
+       - tutorials/delayed-execution.md
+       - tutorials/concurrency.md
+       - tutorials/failures.md
+       - Interactive Tutorial: tutorials/interactive-tutorial.ipynb
+   - How-to Guides:
+     - Installation: how-to/installation.md
+     - Core Operations:
+       - Running Workers: how-to/run-worker.md
+       - Getting Results: how-to/get-results.md
+       - Handling Failures: how-to/handle-failures.md
+       - SQLite Backend: how-to/sqlite-backend.md
+       - Troubleshooting: how-to/troubleshooting.md
+     - Development:
+       - Contributing: how-to/contributing.md
+       - Testing: how-to/testing.md
+       - Performance: how-to/performance.md
+     - Reference:
+       - API Documentation: reference/api/
+       - Error Handling: reference/ERROR_HANDLING.md
+       - Changelog: reference/changelog.md
+     - Explanation:
+       - Architecture: explanation/architecture.md
+       - Serialization: explanation/serialization.md
+       - Limitations: explanation/limitations.md
   - Reference:
     - API Documentation:
       - reference/api/
