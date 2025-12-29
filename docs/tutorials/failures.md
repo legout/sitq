@@ -14,7 +14,7 @@ This example demonstrates:
 3. Understanding [`Result.status`](../reference/api/sitq.core.md) values (success/failed)
 4. Proper error handling in task-based workflows
 
-View full example at [`examples/basic/04_failures_and_tracebacks.py`](../../examples/basic/04_failures_and_tracebacks.py)
+View full example at [`examples/basic/04_failures_and_tracebacks.py`](/examples/basic/04_failures_and_tracebacks.py)
 
 ## Understanding Task Results
 

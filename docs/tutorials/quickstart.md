@@ -19,7 +19,7 @@ This example demonstrates the complete workflow:
 
 ## Understanding the Example
 
-The example code (view it at [`examples/basic/01_end_to_end.py`](../../examples/basic/01_end_to_end.py)) shows the core sitq pattern:
+The example code (view it at [`examples/basic/01_end_to_end.py`](/examples/basic/01_end_to_end.py)) shows the core sitq pattern:
 
 ### 1. Set Up Backend and Queue
 
@@ -120,4 +120,4 @@ backend = SQLiteBackend("tasks.db")
 
 - [API Reference](../reference/api/) - Complete API documentation
 - [How-to Guides](../how-to/) - Solve specific problems with practical guides
-- [Examples](../../examples/basic/) - More runnable examples
+- [Examples](/examples/basic/) - More runnable examples

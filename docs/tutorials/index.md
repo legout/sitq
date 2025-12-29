@@ -18,7 +18,7 @@ Try the runnable examples to see sitq in action:
 python examples/basic/01_end_to_end.py
 ```
 
-See [examples/README.md](examples/README.md) for all examples and learning path.
+See [examples/README.md](/examples/README.md) for all examples and learning path.
 
 Basic usage:
 ```python

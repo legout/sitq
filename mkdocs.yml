@@ -64,6 +64,10 @@ plugins:
       kernel_name: python3
   - awesome-pages
 
+# Watch additional directories
+watch:
+  - examples
+
 # Markdown Extensions
 markdown_extensions:
   - admonition
@@ -82,10 +86,12 @@ markdown_extensions:
 
 # Navigation
 nav:
-  - Home: tutorials/index.md
+  - Home: index.md
   - Tutorials:
+      - Tutorials Home: tutorials/index.md
       - Getting Started:
         - tutorials/quickstart.md
+        - tutorials/basic-concepts.md
         - tutorials/delayed-execution.md
         - tutorials/concurrency.md
         - tutorials/failures.md
@@ -94,17 +100,31 @@ nav:
       - Installation: how-to/installation.md
       - Core Operations:
         - Running Workers: how-to/run-worker.md
+        - Workers: how-to/workers.md
         - Getting Results: how-to/get-results.md
         - Handling Failures: how-to/handle-failures.md
+        - Error Handling: how-to/error-handling.md
         - SQLite Backend: how-to/sqlite-backend.md
         - Troubleshooting: how-to/troubleshooting.md
       - Development:
         - Contributing: how-to/contributing.md
+        - Deployment: how-to/deployment.md
+        - Serialization: how-to/serialization.md
+        - Sync Wrapper: how-to/sync-wrapper.md
         - Testing: how-to/testing.md
         - Performance: how-to/performance.md
   - Reference:
       - API Documentation:
-        - reference/api/
+        - reference/api/sitq.md
+        - reference/api/sitq.core.md
+        - reference/api/sitq.queue.md
+        - reference/api/sitq.worker.md
+        - reference/api/sitq.backends.base.md
+        - reference/api/sitq.backends.sqlite.md
+        - reference/api/sitq.serialization.md
+        - reference/api/sitq.sync.md
+        - reference/api/sitq.exceptions.md
+        - reference/api/sitq.validation.md
       - Error Handling: reference/ERROR_HANDLING.md
       - Changelog: reference/changelog.md
   - Explanation:
