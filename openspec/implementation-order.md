@@ -4,6 +4,9 @@ This document defines the recommended implementation order for the **active** Op
 
 ## Active Changes
 
+### Documentation Quality
+1. `improve-docstring-coverage` (26 tasks)
+
 ### Documentation Refactor (Diataxis)
 1. `refactor-docs-diataxis-ia`
 2. `revise-docs-portal-tutorials-howto-explanation-reference`
@@ -18,6 +21,19 @@ This document defines the recommended implementation order for the **active** Op
 4. `2025-12-14-align-docs-and-deps-v1`
 
 ## Recommended Order
+
+### Documentation Quality Order
+
+#### 1) `improve-docstring-coverage` (foundation)
+**Why first**
+- Should be done before API reference pages are finalized
+- Directly impacts mkdocstrings API reference quality
+- Provides complete docstring coverage before documentation refactor
+
+**Primary outputs**
+- Complete docstrings for all public APIs in `backends/sqlite.py`, `exceptions.py`, `serialization.py`
+- Expanded docstrings for `Backend` abstract methods
+- 100% public API coverage with Google-style formatting
 
 ### Documentation Refactor Order
 
@@ -107,6 +123,13 @@ This document defines the recommended implementation order for the **active** Op
 
 ## Parallelization Guidance
 
+### Documentation Quality vs Refactor Parallelization
+**Recommended parallel tracks**:
+- Track A: Implement `improve-docstring-coverage` (code-only changes)
+- Track B: Implement `refactor-docs-diataxis-ia` + `revise-docs-portal-...` (docs structure and content)
+
+Rationale: Docstring changes only touch `src/sitq/**/*.py`, while docs refactor touches `docs/**` and `docs/mkdocs.yml`. These can proceed independently until the final API reference integration step.
+
 ### Documentation Refactor Parallelization
 **Sequential is recommended** due to tight dependencies:
 - `refactor-docs-diataxis-ia` (1) must be complete before content can be added
@@ -131,6 +154,12 @@ Rationale: worker concurrency changes mostly touch `src/sitq/worker.py`, while d
 If you want to parallelize this anyway, do it on a separate branch and merge it only once (1) and (2) are stable, then resolve conflicts once.
 
 ## Validation Checkpoints (recommended)
+
+### Documentation Quality Checkpoints
+After `improve-docstring-coverage` is implemented:
+- Run `openspec validate improve-docstring-coverage --strict`
+- Run `mkdocs build` and verify all API reference pages render with complete docs
+- Spot-check critical pages: `sitq.backends.sqlite`, `sitq.exceptions`, `sitq.serialization`
 
 ### Documentation Refactor Checkpoints
 After each documentation change-id is implemented:
