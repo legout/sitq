@@ -515,5 +515,5 @@ Request features on GitHub:
 ## See Also
 
 - [GitHub Issues](https://github.com/legout/sitq/issues) - Track limitations
-- [Roadmap](../../openspec/specs/) - Future plans
-- [How-to Guides](../how-to/) - Practical solutions
+- [Roadmap](https://github.com/legout/sitq/tree/main/openspec/specs/) - Future plans
+- [How-to Guides](../how-to/installation.md) - Practical solutions

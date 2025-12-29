@@ -33,7 +33,7 @@ asyncio.run(main())
 
 ## Documentation
 
-### [Tutorials](tutorials/)
+### [Tutorials](tutorials/index.md)
 Learn sitq step-by-step with hands-on lessons. Perfect for getting started.
 
 - [Quickstart](tutorials/quickstart.md) - Get up and running in 5 minutes
@@ -42,7 +42,7 @@ Learn sitq step-by-step with hands-on lessons. Perfect for getting started.
 - [Failure Handling](tutorials/failures.md) - Handle errors gracefully
 - [Interactive Tutorial](tutorials/interactive-tutorial.ipynb) - Learn by doing in a notebook
 
-### [How-to Guides](how-to/)
+### [How-to Guides](how-to/installation.md)
 Solve specific problems with practical, goal-oriented guides.
 
 - [Installation](how-to/installation.md) - Install and configure sitq
@@ -52,14 +52,14 @@ Solve specific problems with practical, goal-oriented guides.
 - [SQLite Backend](how-to/sqlite-backend.md) - Configure SQLite storage
 - [Troubleshooting](how-to/troubleshooting.md) - Common issues and solutions
 
-### [Reference](reference/)
+### [Reference](reference/api/sitq.md)
 Technical specifications and API documentation.
 
-- [API Reference](reference/api/) - Complete API documentation
+- [API Reference](reference/api/sitq.md) - Complete API documentation
 - [Error Handling](reference/ERROR_HANDLING.md) - Error types and handling
 - [Changelog](reference/changelog.md) - Version history and changes
 
-### [Explanation](explanation/)
+### [Explanation](explanation/architecture.md)
 Understand the design decisions and architecture behind sitq.
 
 - [Architecture](explanation/architecture.md) - System design and components
@@ -68,7 +68,7 @@ Understand the design decisions and architecture behind sitq.
 
 ## Runnable Examples
 
-The [`examples/basic/`](../examples/basic/) directory contains complete, runnable scripts demonstrating all core features:
+The [`examples/basic/`](/examples/basic/) directory contains complete, runnable scripts demonstrating all core features:
 
 ```bash
 # End-to-end workflow

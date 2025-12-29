@@ -483,4 +483,4 @@ SitqError
 - [Contributing Guide](../how-to/contributing.md) - Learn how to contribute
 - [Testing Guide](../how-to/testing.md) - Understand testing strategy
 - [Performance Guide](../how-to/performance.md) - Performance optimization
-- [API Reference](../reference/api/) - Detailed API documentation
+- [API Reference](../reference/api/sitq.md) - Detailed API documentation
