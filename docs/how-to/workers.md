@@ -20,7 +20,7 @@ async def main():
 
     # Enqueue a task
     task_id = await queue.enqueue(process_data, "test_data")
-    print(f"Task enqueued: {Task_id}")
+    print(f"Task enqueued: {task_id}")
 
     # Start worker to process the task
     try:
@@ -336,11 +336,11 @@ worker = sitq.Worker(
 ## Next Steps
 
 - [Error Handling Guide](error-handling.md) - Comprehensive error management
-- [`TaskQueue`](../reference/api/queue.md) - For enqueuing tasks to be processed by workers
+- [`TaskQueue`](../reference/api/sitq.queue.md) - For enqueuing tasks to be processed by workers
 
 ## See Also
 
-- [`TaskQueue`](../reference/api/queue.md) - For enqueuing tasks to be processed by workers
-- [`SyncTaskQueue`](../reference/api/sync.md) - For synchronous task processing
-- [`Task`](../reference/api/core.md) - For task data structure
-- [`Result`](../reference/api/core.md) - For task result handling
+- [`TaskQueue`](../reference/api/sitq.queue.md) - For enqueuing tasks to be processed by workers
+- [`SyncTaskQueue`](../reference/api/sitq.sync.md) - For synchronous task processing
+- [`Task`](../reference/api/sitq.core.md) - For task data structure
+- [`Result`](../reference/api/sitq.core.md) - For task result handling
