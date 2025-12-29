@@ -33,6 +33,14 @@ class SQLiteBackend(Backend):
     """SQLite implementation – suitable for local development or testing."""
 
     def __init__(self, db_path: str = "sqlite+aiosqlite:///pytaskqueue.db"):
+        """
+        Initialize a SQLiteBackend instance.
+
+        Args:
+            db_path: Database connection string or file path. Defaults to
+                "sqlite+aiosqlite:///pytaskqueue.db". If a relative file path is
+                provided, it will be converted to the appropriate SQLite URI format.
+        """
         self.db_path = self._gen_db_uri(db_path)
         self.engine: Optional[AsyncEngine] = None
         self._tasks: Optional[Table] = None
@@ -175,6 +183,19 @@ class SQLiteBackend(Backend):
     # Core operations
     # ------------------------------------------------------------------
     async def enqueue(self, task: Task) -> None:
+        """
+        Enqueue a task for execution.
+
+        Args:
+            task: The Task object to enqueue, containing function, arguments,
+                scheduling information, and retry configuration.
+
+        Returns:
+            None
+
+        Raises:
+            BackendError: If the database operation fails.
+        """
         stmt = self._tasks.insert().values(
             id=task.id,
             func=task.func,
@@ -194,6 +215,15 @@ class SQLiteBackend(Backend):
             await conn.execute(stmt)
 
     async def fetch_due_tasks(self, limit: int = 1) -> List[Task]:
+        """
+        Fetch tasks that are due for execution.
+
+        Args:
+            limit: Maximum number of tasks to return. Defaults to 1.
+
+        Returns:
+            A list of Task objects that are ready to run, ordered by next_run_time.
+        """
         now = _now()
         stmt = (
             select(self._tasks)
@@ -237,12 +267,33 @@ class SQLiteBackend(Backend):
         return tasks
 
     async def update_task_state(self, task_id: str, **kwargs) -> None:
+        """
+        Update task state fields.
+
+        Args:
+            task_id: The ID of the task to update.
+            **kwargs: Arbitrary keyword arguments representing task state fields
+                to update (e.g., next_run_time, retries, locked_until).
+
+        Returns:
+            None
+        """
         async with self.engine.begin() as conn:
             await conn.execute(
                 self._tasks.update().where(self._tasks.c.id == task_id).values(**kwargs)
             )
 
     async def store_result(self, result: Result) -> None:
+        """
+        Store a task result in the database.
+
+        Args:
+            result: The Result object to store, containing status, value,
+                traceback, and retry information.
+
+        Returns:
+            None
+        """
         stmt = self._results.insert().values(
             id=result.id,
             task_id=result.task_id,
@@ -301,6 +352,18 @@ class SQLiteBackend(Backend):
     # Locking / retry helpers
     # ------------------------------------------------------------------
     async def claim_task(self, task_id: str, lock_timeout: int = 30) -> bool:
+        """
+        Claim exclusive ownership of a task with a lock timeout.
+
+        Args:
+            task_id: The ID of the task to claim.
+            lock_timeout: Number of seconds the lock should remain valid.
+                Defaults to 30 seconds.
+
+        Returns:
+            True if the task was successfully claimed, False if it was already
+            locked by another worker.
+        """
         now = _now()
         lock_until = now + timedelta(seconds=lock_timeout)
         async with self.engine.begin() as conn:
@@ -318,6 +381,15 @@ class SQLiteBackend(Backend):
             return result.rowcount > 0
 
     async def release_task(self, task_id: str) -> None:
+        """
+        Release a task lock, making it available for other workers.
+
+        Args:
+            task_id: The ID of the task to release.
+
+        Returns:
+            None
+        """
         async with self.engine.begin() as conn:
             await conn.execute(
                 self._tasks.update()
@@ -326,6 +398,16 @@ class SQLiteBackend(Backend):
             )
 
     async def schedule_retry(self, task_id: str, delay: int) -> None:
+        """
+        Schedule a task for retry after a specified delay.
+
+        Args:
+            task_id: The ID of the task to retry.
+            delay: Number of seconds to wait before retrying the task.
+
+        Returns:
+            None
+        """
         now = _now()
         retry_time = now + timedelta(seconds=delay)
         async with self.engine.begin() as conn:
@@ -343,7 +425,16 @@ class SQLiteBackend(Backend):
     # New abstract method implementations
     # ------------------------------------------------------------------
     async def reserve(self, max_items: int, now: datetime) -> List[ReservedTask]:
-        """Reserve up to max_items tasks that are ready to run."""
+        """
+        Reserve up to max_items tasks that are ready to run.
+
+        Args:
+            max_items: Maximum number of tasks to reserve.
+            now: Current datetime for comparison with task availability.
+
+        Returns:
+            A list of ReservedTask objects representing reserved tasks.
+        """
         from ..core import ReservedTask
 
         # Find and lock available tasks
@@ -397,7 +488,16 @@ class SQLiteBackend(Backend):
         return reserved_tasks
 
     async def mark_success(self, task_id: str, result_value: bytes) -> None:
-        """Mark a task as successfully completed."""
+        """
+        Mark a task as successfully completed.
+
+        Args:
+            task_id: The ID of the task to mark as successful.
+            result_value: The serialized result value to store.
+
+        Returns:
+            None
+        """
         from ..core import Result
 
         now = _now()
@@ -426,7 +526,17 @@ class SQLiteBackend(Backend):
             )
 
     async def mark_failure(self, task_id: str, error: str, traceback: str) -> None:
-        """Mark a task as failed."""
+        """
+        Mark a task as failed.
+
+        Args:
+            task_id: The ID of the task to mark as failed.
+            error: The error message describing the failure.
+            traceback: The full traceback of the exception.
+
+        Returns:
+            None
+        """
         from ..core import Result
 
         now = _now()
