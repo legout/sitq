@@ -41,11 +41,8 @@
 ## 7. Notes on Remaining INFO Messages
 - [x] 7.1 Fixed high-priority directory links in docs/index.md, docs/explanation/architecture.md, docs/explanation/limitations.md
 - [x] 7.2 Fixed external openspec/specs/ link to use absolute GitHub URL
-- [x] 7.3 Document that 15 remaining INFO messages about "unrecognized relative link" are intentional
-- These messages refer to broad category links in "See Also" and "Documentation" sections:
-  - `[API Reference](../reference/api/)` - Links to entire API section
-  - `[How-to Guides](../how-to/)` - Links to entire how-to section
-  - `[Examples](../examples/)` - Links to examples directory
-- These links work correctly and provide useful section-level navigation
-- INFO messages are informational, not errors or warnings
-- Decision: Left as-is for better user navigation flexibility
+- [x] 7.3 Fixed all 15 remaining INFO messages about "unrecognized relative link"
+  - Changed all `../reference/api/` → `../reference/api/sitq.md` (10 instances across 10 files)
+  - Changed all `../how-to/` → `../how-to/installation.md` (4 instances across 4 files)
+  - Changed all `/examples/` links → GitHub repository URLs (6 instances)
+- [x] 7.4 Verify zero INFO messages about unrecognized links - Confirmed: 0 messages remain
