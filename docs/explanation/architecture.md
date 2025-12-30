@@ -139,49 +139,70 @@ class BaseBackend:
 
 ### Task Submission Flow
 
-```
-Client → Task Creation → Serialization → Backend Storage → Queue Update
-  │         │              │               │              │
-  │         │              │               │              │
-  ▼         ▼              ▼               ▼              ▼
-Task ID   Task Object    Serialized      Database      Status Update
-Return    Validation     Bytes           Storage       (queued)
+```mermaid
+flowchart TD
+    A[Client] --> B[Task Creation]
+    B --> C[Serialization]
+    C --> D[Backend Storage]
+    D --> E[Queue Update]
+
+    B --> B1[Task Object]
+    B --> B2[Task ID Return]
+    C --> C1[Serialized Bytes]
+    D --> D1[Database Storage]
+    E --> E1[Status Update<br/>queued]
 ```
 
 ### Task Processing Flow
 
-```
-Worker Poll → Task Retrieval → Deserialization → Function Execution → Result Storage
-     │              │              │               │                │
-     │              │              │               │                │
-     ▼              ▼              ▼               ▼                ▼
-Queue Check    Task Fetch     Task Rebuild    Function Call    Result Save
-(queued)      (running)      (ready)         (execute)       (completed)
+```mermaid
+flowchart TD
+    A[Worker Poll] --> B[Task Retrieval]
+    B --> C[Deserialization]
+    C --> D[Function Execution]
+    D --> E[Result Storage]
+
+    A --> A1[Queue Check<br/>queued]
+    B --> B1[Task Fetch<br/>running]
+    C --> C1[Task Rebuild<br/>ready]
+    D --> D1[Function Call<br/>execute]
+    E --> E1[Result Save<br/>completed]
 ```
 
 ### Error Handling Flow
 
-```
-Task Execution → Error Capture → Retry Check → Retry Logic → Final Result
-       │              │              │           │              │
-       │              │              │           │              │
-       ▼              ▼              ▼           ▼              ▼
-Function Call   Exception      Max Retries?  Delay + Requeue  Store Error
-   (fail)        Capture        (yes/no)      (if yes)        (if no)
+```mermaid
+flowchart TD
+    A[Task Execution] --> B[Error Capture]
+    B --> C{Retry Check}
+    C -->|yes| D[Retry Logic]
+    C -->|no| E[Store Error]
+    D --> F[Final Result]
+    E --> F
+
+    A --> A1[Function Call<br/>fail]
+    B --> B1[Exception Capture]
+    C --> C1{Max Retries?}
+    D --> D1[Delay + Requeue]
+    E --> E1[Store Error]
 ```
 
 ## Serialization Architecture
 
 ### Serialization Pipeline
 
-```
-Task Object → Function Capture → Argument Processing → Serialization → Storage
-     │              │                   │               │           │
-     │              │                   │               │           │
-     ▼              ▼                   ▼               ▼           ▼
-Dataclass     Cloudpickle        Validation      Bytes/JSON    Database
-Structure     Function           Types          Format        Storage
-             Serialization
+```mermaid
+flowchart TD
+    A[Task Object] --> B[Function Capture]
+    B --> C[Argument Processing]
+    C --> D[Serialization]
+    D --> E[Storage]
+
+    A --> A1[Dataclass Structure]
+    B --> B1[Cloudpickle Function<br/>Serialization]
+    C --> C1[Validation Types]
+    D --> D1[Bytes/JSON Format]
+    E --> E1[Database Storage]
 ```
 
 ### Serialization Strategies
@@ -205,28 +226,38 @@ Structure     Function           Types          Format        Storage
 
 ### Worker Concurrency
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                 Worker Concurrency                      │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │  Thread 1   │  │  Thread 2   │  │  Thread N   │    │
-│  │             │  │             │  │             │    │
-│  │ Task A      │  │ Task B      │  │ Task X      │    │
-│  │ Execute     │  │ Execute     │  │ Execute     │    │
-│  │ Result      │  │ Result      │  │ Result      │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-│         │                │                │              │
-│         └────────────────┼────────────────┘              │
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │              Task Queue Backend                      │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │ │
-│  │  │ Connection  │  │ Connection  │  │ Connection  │ │ │
-│  │  │   Pool 1    │  │   Pool 2    │  │   Pool N    │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph W["Worker Concurrency"]
+        direction TB
+        
+        subgraph T1["Thread 1"]
+            T1A["Task A<br/>Execute<br/>Result"]
+        end
+        
+        subgraph T2["Thread 2"]
+            T2B["Task B<br/>Execute<br/>Result"]
+        end
+        
+        subgraph TN["Thread N"]
+            TNX["Task X<br/>Execute<br/>Result"]
+        end
+        
+        T1A --> B
+        T2B --> B
+        TNX --> B
+        
+        subgraph Q["Task Queue Backend"]
+            direction LR
+            P1["Connection Pool 1"]
+            P2["Connection Pool 2"]
+            PN["Connection Pool N"]
+        end
+        
+        B --> P1
+        B --> P2
+        B --> PN
+    end
 ```
 
 ### Backend Concurrency
@@ -240,25 +271,66 @@ Structure     Function           Types          Format        Storage
 
 ### Error Hierarchy
 
-```
-SitqError
-├── TaskError
-│   ├── TaskNotFoundError
-│   ├── TaskTimeoutError
-│   ├── TaskSerializationError
-│   └── TaskRetryExhaustedError
-├── QueueError
-│   ├── QueueFullError
-│   ├── QueueEmptyError
-│   └── QueueClosedError
-├── BackendError
-│   ├── BackendConnectionError
-│   ├── BackendTimeoutError
-│   └── BackendSerializationError
-└── WorkerError
-    ├── WorkerStoppedError
-    ├── WorkerBusyError
-    └── WorkerTimeoutError
+```mermaid
+classDiagram
+    class SitqError {
+        <<base exception>>
+    }
+    
+    class TaskError {
+        <<task-related errors>>
+    }
+    
+    class TaskNotFoundError
+    class TaskTimeoutError
+    class TaskSerializationError
+    class TaskRetryExhaustedError
+    
+    class QueueError {
+        <<queue-related errors>>
+    }
+    
+    class QueueFullError
+    class QueueEmptyError
+    class QueueClosedError
+    
+    class BackendError {
+        <<backend-related errors>>
+    }
+    
+    class BackendConnectionError
+    class BackendTimeoutError
+    class BackendSerializationError
+    
+    class WorkerError {
+        <<worker-related errors>>
+    }
+    
+    class WorkerStoppedError
+    class WorkerBusyError
+    class WorkerTimeoutError
+    
+    SitqError <|-- TaskError
+    SitqError <|-- QueueError
+    SitqError <|-- BackendError
+    SitqError <|-- WorkerError
+    
+    TaskError <|-- TaskNotFoundError
+    TaskError <|-- TaskTimeoutError
+    TaskError <|-- TaskSerializationError
+    TaskError <|-- TaskRetryExhaustedError
+    
+    QueueError <|-- QueueFullError
+    QueueError <|-- QueueEmptyError
+    QueueError <|-- QueueClosedError
+    
+    BackendError <|-- BackendConnectionError
+    BackendError <|-- BackendTimeoutError
+    BackendError <|-- BackendSerializationError
+    
+    WorkerError <|-- WorkerStoppedError
+    WorkerError <|-- WorkerBusyError
+    WorkerError <|-- WorkerTimeoutError
 ```
 
 ### Error Handling Strategy
@@ -296,36 +368,64 @@ SitqError
 
 ### Scalability Considerations
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                Scalability Architecture                 │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   Queue 1   │  │   Queue 2   │  │   Queue N   │    │
-│  │             │  │             │  │             │    │
-│  │ Partition A │  │ Partition B │  │ Partition N │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-│         │                │                │              │
-│         └────────────────┼────────────────┘              │
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │                Worker Cluster                        │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │ │
-│  │  │ Worker 1    │  │ Worker 2    │  │ Worker N    │ │ │
-│  │  │             │  │             │  │             │ │ │
-│  │  │ Multi-core  │  │ Multi-core  │  │ Multi-core  │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │              Backend Cluster                        │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │ │
-│  │  │ Backend 1   │  │ Backend 2   │  │ Backend N   │ │ │
-│  │  │             │  │             │  │             │ │ │
-│  │  │ Replicated  │  │ Replicated  │  │ Replicated  │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph S["Scalability Architecture"]
+        direction TB
+        
+        subgraph Q["Queue Layer"]
+            direction LR
+            subgraph Q1["Queue 1"]
+                Q1A["Partition A"]
+            end
+            
+            subgraph Q2["Queue 2"]
+                Q2B["Partition B"]
+            end
+            
+            subgraph QN["Queue N"]
+                QNN["Partition N"]
+            end
+            
+            Q1A --> W
+            Q2B --> W
+            QNN --> W
+        end
+        
+        subgraph W["Worker Cluster"]
+            direction LR
+            subgraph W1["Worker 1"]
+                W1C["Multi-core"]
+            end
+            
+            subgraph W2["Worker 2"]
+                W2C["Multi-core"]
+            end
+            
+            subgraph WN["Worker N"]
+                WNC["Multi-core"]
+            end
+            
+            W1C --> B
+            W2C --> B
+            WNC --> B
+        end
+        
+        subgraph B["Backend Cluster"]
+            direction LR
+            subgraph B1["Backend 1"]
+                B1R["Replicated"]
+            end
+            
+            subgraph B2["Backend 2"]
+                B2R["Replicated"]
+            end
+            
+            subgraph BN["Backend N"]
+                BNR["Replicated"]
+            end
+        end
+    end
 ```
 
 ## Security Architecture
@@ -356,39 +456,70 @@ SitqError
 
 ### Monitoring Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│              Monitoring Architecture                     │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   Metrics   │  │   Logs      │  │   Traces    │    │
-│  │             │  │             │  │             │    │
-│  │ - Counters  │  │ - Events    │  │ - Spans     │    │
-│  │ - Gauges    │  │ - Errors    │  │ - Context   │    │
-│  │ - Histograms│  │ - Debug     │  │ - Timing    │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-│         │                │                │              │
-│         └────────────────┼────────────────┘              │
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │              Observability Stack                      │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │ │
-│  │  │ Prometheus  │  │ Elasticsearch│  │    Jaeger   │ │ │
-│  │  │             │  │             │  │             │ │ │
-│  │  │ Metrics     │  │ Logs        │  │ Tracing     │ │ │
-│  │  │ Storage     │  │ Storage     │  │ Storage     │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                          │                               │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │              Visualization Layer                      │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │ │
-│  │  │ Grafana     │  │    Kibana   │  │ Jaeger UI   │ │ │
-│  │  │             │  │             │  │             │ │ │
-│  │  │ Dashboards  │  │ Log Search  │  │ Trace View  │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph M["Monitoring Architecture"]
+        direction TB
+        
+        subgraph Data["Data Collection"]
+            direction LR
+            subgraph Metrics["Metrics"]
+                M1["Counters"]
+                M2["Gauges"]
+                M3["Histograms"]
+            end
+            
+            subgraph Logs["Logs"]
+                L1["Events"]
+                L2["Errors"]
+                L3["Debug"]
+            end
+            
+            subgraph Traces["Traces"]
+                T1["Spans"]
+                T2["Context"]
+                T3["Timing"]
+            end
+            
+            Metrics --> O
+            Logs --> O
+            Traces --> O
+        end
+        
+        subgraph O["Observability Stack"]
+            direction LR
+            subgraph Prom["Prometheus"]
+                P["Metrics Storage"]
+            end
+            
+            subgraph ES["Elasticsearch"]
+                E["Logs Storage"]
+            end
+            
+            subgraph J["Jaeger"]
+                JSt["Tracing Storage"]
+            end
+            
+            P --> V
+            E --> V
+            JSt --> V
+        end
+        
+        subgraph V["Visualization Layer"]
+            direction LR
+            subgraph Grafana["Grafana"]
+                G1["Dashboards"]
+            end
+            
+            subgraph Kibana["Kibana"]
+                K1["Log Search"]
+            end
+            
+            subgraph JUI["Jaeger UI"]
+                J1["Trace View"]
+            end
+        end
+    end
 ```
 
 ### Key Metrics
